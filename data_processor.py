@@ -4,28 +4,9 @@ import matplotlib.pyplot as plt
 import os
 import re
 import pandas as pd
-from feature_extractor import draw_hand_landmarks
 import time
+from hand import Hand
 
-class Hand(object):
-    def __init__(self, _image, _age, _gender, _id):
-        self.img = _image
-        self.age = _age
-        self.gender = _gender
-        self.id = _id
-
-    def normalize_contrast(self):
-        pass
-    
-    def draw_landmarks(self):
-        self.img = draw_hand_landmarks(self.img)
-
-    def show(self):
-        plt.imshow(self.img)
-        plt.show()
-
-        
-        
 
 def get_id_from_file_name(_file_name):
     # _file_name = [img_id].png
@@ -37,12 +18,19 @@ class DataProcessor(object):
         self.hands = []
         self.hand_images_directory = "./data/boneage-training-dataset"
         self.metadata_dataframe_path = "./data/boneage-training-dataset.csv"
-        self.batch_size = 300
+        self.list_hand_files = None
+        self.batch_size = 1
+        self.prepare_list_hand_files()
+
+    def prepare_list_hand_files(self):
+        self.list_hand_files = os.listdir(self.hand_images_directory)
+        self.list_hand_files.sort()
+        self.list_hand_files = self.list_hand_files[: self.batch_size]
 
     def load_batch_of_hands(self):
         metadata_df = pd.read_csv(self.metadata_dataframe_path)
 
-        for hand_file in os.listdir(self.hand_images_directory)[: self.batch_size]:
+        for hand_file in self.list_hand_files:
             id = get_id_from_file_name(hand_file)
             img_file = os.path.join(self.hand_images_directory, hand_file)
             img = cv2.imread(img_file, 0)
