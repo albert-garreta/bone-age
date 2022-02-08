@@ -14,9 +14,9 @@ class Hand(object):
         # Features for regression model
         self.ratio_length_finger_by_hand_width = None
 
-    def normalize_contrast(self):
+    def standardize_contrast(self):
         pass
-
+    
     def show(self):
         plt.imshow(self.img)
         plt.title(f"Hand id {self.id}")

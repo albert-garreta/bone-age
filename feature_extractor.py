@@ -1,8 +1,10 @@
 import cv2
+from cv2 import CV_32FC3
 import mediapipe as mp
 import numpy as np
 from utils import annotate_img
-
+import math
+import matplotlib.pyplot as plt
 
 mp_hands = mp.solutions.hands
 mp_draw = mp.solutions.drawing_utils
@@ -79,9 +81,24 @@ class Featurizer(object):
         print(txt3)
         return ratio
     
-    def get_gap_bone_gap_proxy(self):
-        pass
+    def get_gap_bone_bones_proxy(self, _hand):
+        ldk_id = 10
+        ldk_10 = _hand.landmarks[10]
+        distance_10_9 = get_distance(_hand.landmarks[10], _hand.landmarks[9])
+        ratio = 0.17
+        _img_copy = _hand.img.copy()
+        displacement = math.floor(ratio*distance_10_9)
+        # NOTE: the fist dimension is the height
+        square = _img_copy[ldk_10[1] - displacement : ldk_10[1] + displacement, ldk_10[0] - displacement : ldk_10[0] + displacement]
 
+        
+        point_low_left = (ldk_10[0] - displacement, ldk_10[1] - displacement)
+        point_up_right = (ldk_10[0] + displacement, ldk_10[1] + displacement)
+        cv2.rectangle(_hand.img, point_low_left, point_up_right, (255, 0, 255), thickness=2, lineType=cv2.LINE_8);
+        #annotate_img(_hand.img, point_low_left, "low_left")
+        #annotate_img(_hand.img, point_up_right, "up_right")
+        #print(point_low_left, point_up_right)
+        
     def draw_landmarks(self, _hand):
         assert _hand.raw_landmarks is not None, "No hand landmarks detected"
         mp_draw.draw_landmarks(
