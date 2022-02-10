@@ -7,10 +7,11 @@ import pandas as pd
 import time
 from tqdm import tqdm
 from hand import Hand
-from feature_extractor import Featurizer
+
+# from feature_extractor import Featurizer
 import config
 
-featurizer = Featurizer()
+# featurizer = Featurizer()
 
 
 def get_id_from_file_name(_file_name):
@@ -47,13 +48,17 @@ class DataProcessor(object):
             gender = hand_metadata["male"].bool()
             gender = int(gender)
             hand = Hand(img, age, gender, id)
-            featurizer.featurize_hand(hand)
+            hand.featurize()
             self.hands.append(hand)
             self.add_hand_features_to_df(hand)
         print("Extraction complete")
-        
+
         self.features_df.to_csv(config.features_df_path)
 
     def add_hand_features_to_df(self, _hand):
-        hand_features = pd.DataFrame({feature: [_hand[feature]] for feature in config.FEATURE_NAMES})
-        self.features_df = pd.concat([self.features_df, hand_features], ignore_index=True, axis=0)
+        hand_features = pd.DataFrame(
+            {feature: [getattr(_hand, feature)] for feature in config.FEATURES_FOR_DATA_ANALYSIS}
+        )
+        self.features_df = pd.concat(
+            [self.features_df, hand_features], ignore_index=True, axis=0
+        )

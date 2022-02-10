@@ -5,7 +5,7 @@ from sklearn.utils import shuffle
 import numpy as np
 df = pd.read_csv(config.features_df_path).iloc[:, 1:] # remove Unnamed: 0 -- how to abvoid having it in the first place?
 
-df = df[config.FEATURE_NAMES]
+df = df[config.FEATURES_FOR_DATA_ANALYSIS]
 
 if config.shuffle_data:
     # This shuffles the rows
