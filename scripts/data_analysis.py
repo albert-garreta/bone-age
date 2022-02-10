@@ -16,7 +16,7 @@ print(df.corr())
 df = df.dropna()
 
 
-df = df.loc[df['gender']==1,:] # only male/female
+df = df.loc[df['gender']==0,:] # only male/female
 
 df_train = df.iloc[: config.training_sample_size]
 df_test = df.iloc[-config.training_sample_size :]

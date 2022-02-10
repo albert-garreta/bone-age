@@ -3,7 +3,7 @@ import config
 import cv2
 import math
 import mediapipe as mp
-from utils import annotate_img
+from scripts.utils import annotate_img
 import numpy as np
 
 
@@ -40,7 +40,6 @@ class HandInterface(object):
         for feature in config.ALL_FEATURE_NAMES:
             setattr(self, feature, None)
 
-
 class Hand(HandInterface):
     def __init__(self, _image, _boneage, _gender, _id):
 
@@ -75,7 +74,7 @@ class Hand(HandInterface):
         if mp_result.multi_hand_landmarks is None:
             print(
                 f"No hand landmarks were found in Hand {self.id} "
-                f"with boneage {self.age} and gender {self.gender}"
+                f"with boneage {self.boneage} and gender {self.gender}"
             )
             return None
         # We store the hand_landmark data structure given my mediapipe as `raw_landmarks`
