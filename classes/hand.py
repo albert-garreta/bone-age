@@ -5,29 +5,11 @@ import math
 import mediapipe as mp
 from scripts.utils import annotate_img
 import numpy as np
-
-
-def no_landmarks_wrapper(fun):
-    """A function wrapped with this will skip itself and
-    return None if `self.landmarks` is None"""
-
-    def wrapped_fun(*args, **kwargs):
-        if args[0].landmarks is None:
-            return None
-        else:
-            return fun(*args, **kwargs)
-
-    return wrapped_fun
-
-
-class dotdict(dict):
-    """Any class inheriting from this will be a dictionary whose attributes can be accessed with .dot notation"""
-
-    # TODO: Used?
-    __getattr__ = dict.get
-    __setattr__ = dict.__setitem__
-    __delattr__ = dict.__delitem__
-
+from classes.hand_utils import (
+    no_landmarks_wrapper,
+    get_distance,
+    get_consecutive_ldk_distances,
+)
 
 mp_hands = mp.solutions.hands.Hands()
 mp_draw = mp.solutions.drawing_utils
@@ -40,6 +22,7 @@ class HandInterface(object):
         for feature in config.ALL_FEATURE_NAMES:
             setattr(self, feature, None)
 
+
 class Hand(HandInterface):
     def __init__(self, _image, _boneage, _gender, _id):
 
@@ -47,90 +30,116 @@ class Hand(HandInterface):
         self.boneage = _boneage
         self.gender = _gender
         self.id = _id
-        self.raw_landmarks = None  # landmarks in the format given by mediapipe
-        self.landmarks = None  # landmarks in a dictionary form more comfortable for us
+        # mediapipe hand landmarks in the format given by mediapipe
+        self.raw_landmarks = None
+        # mediapipe hand landmarks in a dictionary form more comfortable for us
+        self.landmarks = None
 
         # Attributes used internally
-        self._middle_finger_length = None
+        self.length_middle_finger = None
         self._gap_proxy_mean = None
         self._gap_proxy_std = None
 
-        # Populate attributes
-        self.get_hand_landmarks()
+        self._populate_attributes()
+
+    def _populate_attributes(self):
+        # TODO: clean this _ naming stuff
+        self._get_hand_landmarks()
         self.get_gap_bones_proxy()
         self.featurize()
 
-    def get_hand_landmarks(self):
-        # TODO: refactor this
-        """Returns a dictionary with items of the form:
+    """----------------------------------------------------------------
+    Get mediapipe's hand lanmarks methods
+    ----------------------------------------------------------------"""
+
+    def _get_hand_landmarks(self):
+        """Creates the attribute `landmarks`: a dictionary with items of the form:
         landmark_id (int) : (x_coordinate, y_coordinate)
         """
-        dict_centered_landmarks = {}
-        img = self.img
-        mp_result = mp_hands.process(img)
-        # mp_result.multi_hand_landmarks is None if no landmarks were found
-        # Otherwise it is a list (?) with length the number of hands detected
-        # each entry is a list of a particular hand landmark
-        if mp_result.multi_hand_landmarks is None:
+        raw_landmarks, success = self._get_raw_landmarks()
+        if not success:
             print(
                 f"No hand landmarks were found in Hand {self.id} "
                 f"with boneage {self.boneage} and gender {self.gender}"
             )
-            return None
-        # We store the hand_landmark data structure given my mediapipe as `raw_landmarks`
-        # This is only used so far in the `draw_landmarks` method
-        # We will be working with the dictionary version that we create now
-        # The zero is because there will always be only one hand
-        self.raw_landmarks = mp_result.multi_hand_landmarks[0]
-        landmarks = mp_result.multi_hand_landmarks[0].landmark
+        self.raw_landmarks = raw_landmarks
+        self._convert_raw_landmarks()
+
+    def _get_raw_landmarks(self):
+        mp_result = mp_hands.process(self.img)
+        if mp_result.multi_hand_landmarks is None:
+            return None, False
+        else:
+            return mp_result.multi_hand_landmarks[0], True
+
+    def _convert_raw_landmarks(self):
+        landmarks = self.raw_landmarks.landmark
+        self.landmarks = {}
         for id, landmark in enumerate(landmarks):
-            # Here we scale the point to match the img size
-            height, width, channels = self.img.shape
-            x_img = int(landmark.x * width)
-            y_img = int(landmark.y * height)
-            # Now we add the point to the dictionary
-            dict_centered_landmarks[id] = (x_img, y_img)
-            if config.annotate_imgs:
-                # And we write the landmark id on the image
-                annotate_img(
-                    self.img,
-                    (x_img, y_img),
-                    str(id),
-                )
-        self.landmarks = dict_centered_landmarks
+            self.process_individual_landmark(id, landmark)
+
+    def process_individual_landmark(self, _id, _landmark):
+        x_scaled, y_scaled = self.get_scaled_landmark_coordinates(_landmark)
+        self.landmarks[_id] = (x_scaled, y_scaled)
+        if config.annotate_imgs:
+            # Write the landmark id on the image
+            annotate_img(
+                self.img,
+                (x_scaled, y_scaled),
+                str(_id),
+            )
+
+    def get_scaled_landmark_coordinates(self, _landmark):
+        height, width, channels = self.img.shape
+        x_scaled = int(_landmark.x * width)
+        y_scaled = int(_landmark.y * height)
+        return x_scaled, y_scaled
+
+    """----------------------------------------------------------------
+    Feature creation methods
+    ----------------------------------------------------------------"""
 
     def featurize(self):
+        """Main function to create the features.
+        The features used are customizable from the config file.
+        For this reason the class uses the keywords `eval`, `setattr`, and
+        `getattr` which allow to evaluate functions, set attributes, or get
+        attributes by passing in the string representation of the function
+        or attributes being used.
+        """
         for feature_name in config.ALL_FEATURE_NAMES:
             feature_value = eval(f"self.get_{feature_name}()")
             setattr(self, feature_name, feature_value)
 
     def get_boneage(self):
+        # These are redundant but we need them for our customizable features logic
         return self.boneage
 
     def get_gender(self):
+        # These are redundant but we need them for our customizable features logic
         return self.gender
 
     @no_landmarks_wrapper
-    def get_ratio_finger_palm(self):
-        dict_landmarks = self.landmarks
-        # tip of mifflr finger to palm
+    def get_length_middle_finger(self):
         middle_finger_landmark_ids = [12, 11, 10, 9]
-        # left to right of the palm
+        self.length_middle_finger = get_consecutive_ldk_distances(
+            self.landmarks, middle_finger_landmark_ids
+        )
+
+    @no_landmarks_wrapper
+    def get_length_top_palm(self):
         top_palm_landmark_ids = [17, 13, 9, 5]
-        middle_finger_length = get_consecutive_ldk_distances(
-            dict_landmarks, middle_finger_landmark_ids
+        self.length_top_palm = get_consecutive_ldk_distances(
+            self.landmarks, top_palm_landmark_ids
         )
-        top_palm_length = get_consecutive_ldk_distances(
-            dict_landmarks, top_palm_landmark_ids
-        )
-        ratio = middle_finger_length / top_palm_length
-        self._middle_finger_length = middle_finger_length
-        if config.annotate_imgs:
-            annotate_img(self.img, (0, 1600), f"finger_to_palm {round(ratio,2)}")
-        return ratio
+    
+    @no_landmarks_wrapper
+    def get_ratio_finger_palm(self):
+        return self.length_middle_finger / self.length_top_palm
 
     @no_landmarks_wrapper
     def get_gap_bones_proxy(self):
+        # TODO: clean this up
         ldk_10 = self.landmarks[10]
         distance_10_9 = get_distance(self.landmarks[10], self.landmarks[9])
         ratio = 0.17
@@ -160,13 +169,11 @@ class Hand(HandInterface):
                 lineType=cv2.LINE_8,
             )
 
-    @no_landmarks_wrapper
     def get_ratio_finger_to_gap_std(self):
-        return self._middle_finger_length / self._gap_proxy_std
+        return self.length_middle_finger / self._gap_proxy_std
 
-    @no_landmarks_wrapper
     def get_ratio_finger_to_gap_mean(self):
-        return self._middle_finger_length / self._gap_proxy_mean
+        return self.length_middle_finger / self._gap_proxy_mean
 
     """----------------------------------------------------------------
     Utility methods 
@@ -188,19 +195,3 @@ class Hand(HandInterface):
         plt.imshow(self.img)
         plt.title(f"Hand id {self.id}, boneage {self.age}, gender {self.gender}")
         plt.show()
-
-
-def get_distance(point1, point2):
-    # point = tuple(int, int)
-    translated_point = (point1[0] - point2[0], point1[1] - point2[1])
-    return np.sqrt(translated_point[0] ** 2 + translated_point[1] ** 2)
-
-
-def get_consecutive_ldk_distances(_dict_landmarks, _landmark_ids_list):
-    total_distance = 0
-    for idx, ldk_id in enumerate(_landmark_ids_list[:-1]):
-        next_ldk_id = _landmark_ids_list[idx + 1]
-        distance = get_distance(_dict_landmarks[ldk_id], _dict_landmarks[next_ldk_id])
-        # print(distance, ldk_id, next_ldk_id)
-        total_distance += distance
-    return total_distance

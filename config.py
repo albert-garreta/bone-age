@@ -1,6 +1,8 @@
 ALL_FEATURE_NAMES = [
     "boneage",
     "gender",
+    "length_middle_finger"
+    "length_top_palm"
     "ratio_finger_palm",
     # "gap_proxy_mean",
     # "gap_proxy_std",

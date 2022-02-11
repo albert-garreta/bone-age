@@ -19,7 +19,7 @@ def get_id_from_file_name(_file_name):
     return _file_name.split(".")[0]
 
 
-class DataProcessor(object):
+class HandFactory(object):
     def __init__(self):
         self.hands = []
         self.hand_images_directory = config.hand_img_folder
