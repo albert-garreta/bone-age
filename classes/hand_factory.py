@@ -6,7 +6,7 @@ import re
 import pandas as pd
 import time
 from tqdm import tqdm
-from hand import Hand
+from classes.hand import Hand
 
 # from feature_extractor import Featurizer
 import config
@@ -34,7 +34,12 @@ class HandFactory(object):
         self.list_hand_files.sort()
         self.list_hand_files = self.list_hand_files[: self.batch_size]
 
-    def featurize_batch_of_hands(self):
+    def featurize_batch_of_hands(self) -> pd.DataFrame:
+        """
+        Returns:
+            pd.DataFrame: a dataframe containing the features in FEATURES_FOR_DATA_ANALYSIS for each of the hands files
+            in self.list_hand_files
+        """
         metadata_df = pd.read_csv(self.metadata_dataframe_path)
 
         print("Extracting features from hands...")
@@ -49,15 +54,25 @@ class HandFactory(object):
             gender = int(gender)
             hand = Hand(img, age, gender, id)
             hand.featurize()
-            self.hands.append(hand)
-            self.add_hand_features_to_df(hand)
+            self.add_hand(hand)
         print("Extraction complete")
-
+        self.add_all_hand_features_to_df()
         self.features_df.to_csv(config.features_df_path)
 
-    def add_hand_features_to_df(self, _hand):
+    def add_hand(self, _hand):
+        if _hand.landmarks:
+            self.hands.append(_hand)
+
+    def add_all_hand_features_to_df(self):
+        for _hand in self.hands:
+            self.add_hand_to_df(_hand)
+
+    def add_hand_to_df(self, _hand):
         hand_features = pd.DataFrame(
-            {feature: [getattr(_hand, feature)] for feature in config.FEATURES_FOR_DATA_ANALYSIS}
+            {
+                feature: [getattr(_hand, feature)]
+                for feature in config.FEATURES_FOR_DATA_ANALYSIS
+            }
         )
         self.features_df = pd.concat(
             [self.features_df, hand_features], ignore_index=True, axis=0

@@ -15,6 +15,10 @@ mp_hands = mp.solutions.hands.Hands()
 mp_draw = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 
+"""TODO: STUFF TO TRY
+    - Separate in age ranges as in BoneXpert
+"""
+
 
 class HandInterface(object):
     # TODO: how do interfaces work really?
@@ -62,6 +66,7 @@ class Hand(HandInterface):
                 f"No hand landmarks were found in Hand {self.id} "
                 f"with boneage {self.boneage} and gender {self.gender}"
             )
+            return None
         self.raw_landmarks = raw_landmarks
         self._convert_raw_landmarks()
 
@@ -72,6 +77,7 @@ class Hand(HandInterface):
         else:
             return mp_result.multi_hand_landmarks[0], True
 
+    # @no_landmarks_wrapper
     def _convert_raw_landmarks(self):
         landmarks = self.raw_landmarks.landmark
         self.landmarks = {}
@@ -98,7 +104,7 @@ class Hand(HandInterface):
     """----------------------------------------------------------------
     Feature creation methods
     ----------------------------------------------------------------"""
-
+    @no_landmarks_wrapper
     def featurize(self):
         """Main function to create the features.
         The features used are customizable from the config file.
@@ -119,21 +125,14 @@ class Hand(HandInterface):
         # These are redundant but we need them for our customizable features logic
         return self.gender
 
-    @no_landmarks_wrapper
     def get_length_middle_finger(self):
         middle_finger_landmark_ids = [12, 11, 10, 9]
-        self.length_middle_finger = get_consecutive_ldk_distances(
-            self.landmarks, middle_finger_landmark_ids
-        )
+        return get_consecutive_ldk_distances(self.landmarks, middle_finger_landmark_ids)
 
-    @no_landmarks_wrapper
     def get_length_top_palm(self):
         top_palm_landmark_ids = [17, 13, 9, 5]
-        self.length_top_palm = get_consecutive_ldk_distances(
-            self.landmarks, top_palm_landmark_ids
-        )
-    
-    @no_landmarks_wrapper
+        return get_consecutive_ldk_distances(self.landmarks, top_palm_landmark_ids)
+
     def get_ratio_finger_palm(self):
         return self.length_middle_finger / self.length_top_palm
 
@@ -151,8 +150,13 @@ class Hand(HandInterface):
             ldk_10[0] - displacement : ldk_10[0] + displacement,
         ]
         square = cv2.cvtColor(square, cv2.COLOR_RGB2GRAY)
+        # square = cv2.adaptiveThreshold(
+        #     square, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 5, 2
+        # )
         square = cv2.equalizeHist(square)
-        square = cv2.cvtColor(square, cv2.COLOR_GRAY2BGR)
+        # plt.imshow(square)
+        # plt.show()
+        square = cv2.cvtColor(square, cv2.COLOR_GRAY2RGB)
 
         self._gap_proxy_mean = square.mean()
         self._gap_proxy_std = square.std()
@@ -169,9 +173,11 @@ class Hand(HandInterface):
                 lineType=cv2.LINE_8,
             )
 
+    @no_landmarks_wrapper
     def get_ratio_finger_to_gap_std(self):
         return self.length_middle_finger / self._gap_proxy_std
 
+    @no_landmarks_wrapper
     def get_ratio_finger_to_gap_mean(self):
         return self.length_middle_finger / self._gap_proxy_mean
 
@@ -192,6 +198,11 @@ class Hand(HandInterface):
         )
 
     def show(self):
-        plt.imshow(self.img)
-        plt.title(f"Hand id {self.id}, boneage {self.age}, gender {self.gender}")
-        plt.show()
+        if config.allow_hand_plotting:
+            plt.imshow(self.img)
+            plt.title(
+                f"Hand id {self.id}, boneage {self.boneage}, gender {self.gender}"
+            )
+            plt.show()
+        else:
+            return None

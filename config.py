@@ -1,8 +1,8 @@
 ALL_FEATURE_NAMES = [
     "boneage",
     "gender",
-    "length_middle_finger"
-    "length_top_palm"
+    "length_middle_finger",
+    "length_top_palm",
     "ratio_finger_palm",
     # "gap_proxy_mean",
     # "gap_proxy_std",
@@ -20,8 +20,9 @@ FEATURES_FOR_DATA_ANALYSIS = [
 ]
 hand_img_folder = "./data/boneage-training-dataset"
 hand_metadata_folder = "./data/boneage-training-dataset.csv"
-batch_size = 4000
+batch_size = 1000
 features_df_path = './data/features_df.csv'
 training_sample_size = int(0.75*batch_size)
 annotate_imgs = True
 shuffle_data = True
+allow_hand_plotting = False
