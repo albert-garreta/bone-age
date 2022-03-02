@@ -13,6 +13,35 @@ BGR_color_bounds = {
 
 feature_params = dict(maxCorners=500, qualityLevel=0.2, minDistance=15, blockSize=9)
 
+
+
+def process_connected_components(hand_masked):
+    cc_output = cv2.connectedComponentsWithStats(
+        hand_masked, 4, cv2.CV_8S  # connectivity  4 or 8
+    )
+
+    (num_labels, labels, stats, centroids) = cc_output
+    print(f"num labels: {num_labels}")
+    areas = [stats[label, cv2.CC_STAT_AREA] for label in range(2,num_labels)]
+    print(areas)
+    total_area = sum(areas)
+    area_ratios = [round(area/total_area,4) for area in areas]
+    print(area_ratios)
+    for label in range(2,num_labels): # the 0 and 2 are exterior and bounding box
+        print(f"Examining label: {label}")
+        starting_x_coord = stats[label, cv2.CC_STAT_LEFT]
+        starting_y_coord = stats[label, cv2.CC_STAT_TOP]
+        width = stats[label, cv2.CC_STAT_WIDTH]
+        height = stats[label, cv2.CC_STAT_HEIGHT]
+        area = stats[label, cv2.CC_STAT_AREA]
+        (cX, cY) = centroids[label]
+        output = hand_masked.copy()
+        print(f"Component area", area)
+        cv2.circle(output, (int(cX), int(cY)), 8, (0, 0, 255), -1)
+        cv2.rectangle(output, (starting_x_coord, starting_y_coord), (starting_x_coord + width, starting_y_coord + height), (0, 0, 255, 0), 3)
+        plt.imshow(output)
+        plt.show()
+
 if __name__ == "__main__":
     dir = "data/data_tagged"
     imgs = os.listdir(dir)
@@ -28,27 +57,6 @@ if __name__ == "__main__":
                 hand_masked = cv2.cvtColor(hand_masked, cv2.COLOR_BGR2GRAY)
                 hand_masked =  cv2.threshold(hand_masked, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
                 hand_masked = hand_masked.astype(np.uint8)
-                # print(mask.shape)
-                # mask = mask.reshape(*mask.shape, 1)
-                # corners = cv2.goodFeaturesToTrack(mask, **feature_params)
-                # if corners is not None:
-                #     for x, y in np.float32(corners).reshape(-1, 2):
-                #         cv2.circle(a, (x, y), 10, (0, 255, 0), 1)
-
-                print(hand_masked.shape)
-                output = cv2.connectedComponentsWithStats(
-                    hand_masked, 4, cv2.CV_8S  # connectivity  4 or 8
-                )
-                (num_labels, labels, stats, centroids) = output
-                print(f"num labels: {num_labels}")
-                print(f"labels: {labels}")
-                print(f"stats: {stats}")
-                print(f"centroids: {centroids}")
-                
-                plt.title(f"{img}-{color}")
-                plt.imshow(hand_masked, cmap="gray")
-                plt.show()
+                process_connected_components(hand_masked)
         except Exception as e:
             print(e)
-
-
