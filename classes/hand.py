@@ -3,7 +3,7 @@ import config
 import cv2
 import math
 import mediapipe as mp
-from scripts.utils import annotate_img
+from scripts.utils import annotate_img, get_line_function
 import numpy as np
 from classes.hand_utils import (
     no_landmarks_wrapper,
@@ -124,6 +124,18 @@ class Hand(HandInterface):
     def get_gender(self):
         # These are redundant but we need them for our customizable features logic
         return self.gender
+    
+    def get_length_10_9(self):
+        point1 = self.landmarks[10]
+        point2 = self.landmarks[9]
+        line_function = get_line_function(point1, point2)
+        pass
+    
+    def get_connected_components(self):
+        pass
+    
+    def get_area_carp(self):
+        pass 
 
     def get_length_middle_finger(self):
         middle_finger_landmark_ids = [12, 11, 10, 9]

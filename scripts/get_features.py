@@ -1,4 +1,4 @@
-from hand_processor import DataProcessor
+from classes.hand_factory import DataProcessor
 #from feature_extractor import Featurizer
 
 if __name__ == "__main__":

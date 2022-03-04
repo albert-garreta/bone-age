@@ -19,3 +19,13 @@ def annotate_img(
         _font_color,
         _thickness,
     )
+
+
+def get_line_function(point1, point2):
+    a = (point2[1] - point1[1]) / (point2[0] - point1[0])
+    b = point1[1] - a * point1[0]
+
+    def line_function(x):
+        return a * x + b
+
+    return line_function
