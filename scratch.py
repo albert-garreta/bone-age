@@ -1,15 +1,38 @@
-def get_line_function(point1, point2):
-    a = (point2[1] - point1[1]) / (point2[0] - point1[0])
-    b = point1[1] - a * point1[0]
-
-    def line_function(x):
-        return a * x + b
-
-    return line_function
-
+import cv2
+import matplotlib.pyplot as plt
+import os
+import random
+import matplotlib.pyplot as plt
+import config
+import cv2
+import math
+import mediapipe as mp
+import numpy as np
 
 if __name__ == "__main__":
-    l = get_line_function((1, 2), (3, 4))
-    print(l(1))
-    print(l(3))
-    print(l(2))
+    dir = "data/data_tagged/1377.png"
+    dir = "data/data_tagged"
+    dir = "data/boneage-training-dataset"
+    random_img_dir = random.choice(os.listdir(dir))
+    img = cv2.imread(os.path.join(dir,random_img_dir))
+    #img = cv2.imread(dir,1)
+    #plt.imshow(img)
+    #plt.show()
+    
+    
+    mpHands = mp.solutions.hands
+    hands = mpHands.Hands()
+    
+    mp_draw = mp.solutions.drawing_utils
+    mp_drawing_styles = mp.solutions.drawing_styles
+    
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    
+    # plt.imshow(img, )
+    # plt.show()
+    
+    results = hands.process(img)
+    print(results)
+    print(results.multi_hand_landmarks[0])
