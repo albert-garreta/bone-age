@@ -1,11 +1,8 @@
+"""For each of these features, make sure there is a method in the `hand` class
+called `get_<name of feature>`"""
 ALL_FEATURE_NAMES = [
     "boneage",
     "gender",
-    #"length_middle_finger",
-    #"length_top_palm",
-    #"ratio_finger_palm",
-    # "gap_proxy_mean",
-    # "gap_proxy_std",
     "ratio_finger_to_gap_std",
     "ratio_finger_to_gap_mean",
     "carp_bones_area_ratio",
@@ -14,10 +11,6 @@ ALL_FEATURE_NAMES = [
 FEATURES_FOR_DATA_ANALYSIS = [
     "boneage",
     "gender",
-    # "ratio_finger_palm",
-    # "gap_proxy_mean",
-    # "gap_proxy_std",
-    #"ratio_finger_to_gap_std",
     "ratio_finger_to_gap_mean",
     "carp_bones_area_ratio",
     "epifisis_area_ratio"

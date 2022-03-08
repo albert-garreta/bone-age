@@ -29,6 +29,7 @@ class HandFactory(object):
         self.batch_size = config.batch_size
         self.features_df = pd.DataFrame()
         self.prepare_list_hand_files()
+        self.prepare_segmentations()
 
     def prepare_list_hand_files(self):
         # We use the segmented hands directory because it containts only a subset
