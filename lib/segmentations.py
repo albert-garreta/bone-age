@@ -3,13 +3,16 @@ import matplotlib.pyplot as plt
 import os
 import random
 import matplotlib.pyplot as plt
-import scripts.config as config
+import config as config
 import cv2
 import math
 import mediapipe as mp
 import numpy as np
 import json
 import scipy.spatial.distance as distance
+
+
+
 
 def get_segmentations(id) -> dict:
     """
@@ -32,7 +35,7 @@ def get_segmentations(id) -> dict:
     return segmentations
 
 
-def draw_point(img, point):
+def _draw_point(img, point):
     return cv2.circle(
         img,
         (int(point[0]), int(point[1])),
@@ -42,7 +45,7 @@ def draw_point(img, point):
     )
 
 
-def draw_contour(img, list_of_points, bone_num=""):
+def _draw_contour(img, list_of_points, bone_num=""):
     center_x = int(np.mean([p[0] for p in list_of_points]))
     center_y = int(np.mean([p[1] for p in list_of_points]))
     fontScale = 3
@@ -60,11 +63,11 @@ def draw_contour(img, list_of_points, bone_num=""):
         cv2.LINE_AA,
     )
     for point in list_of_points:
-        img = draw_point(img, point)
+        img = _draw_point(img, point)
     return img
 
 
-def get_convex_hull(list_of_points):
+def _get_convex_hull(list_of_points):
     cvx_hull = cv2.convexHull(np.array(list_of_points).astype(np.float32))
     cvx_hull = [(p[0][0], p[0][1]) for p in cvx_hull]
     return cvx_hull
@@ -88,7 +91,7 @@ if __name__ == "__main__":
     segmentations_id = segmentations[str(id)]
 
     for idx, contour in enumerate(segmentations_id):
-        img = draw_contour(img, contour, str(idx))
+        img = _draw_contour(img, contour, str(idx))
 
     for idx, contour in enumerate(segmentations_id):
         diameter = get_diameter(contour)

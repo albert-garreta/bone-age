@@ -3,17 +3,20 @@ called `get_<name of feature>`"""
 ALL_FEATURE_NAMES = [
     "boneage",
     "gender",
-    "ratio_finger_to_gap_std",
-    "ratio_finger_to_gap_mean",
-    "carp_bones_area_ratio",
-    "epifisis_area_ratio"
+    "metacarp_20_23_gap",
+    "metacarp_27_30_gap",
+    "metacarp_4_7_gap",
+    "metacarp_12_15_gap",
+    "carp_bones_max_diameter",
+    "epifisis_diameter",
 ]
+
 FEATURES_FOR_DATA_ANALYSIS = [
     "boneage",
     "gender",
-    "ratio_finger_to_gap_mean",
+    "metacarp_gap",
     "carp_bones_area_ratio",
-    "epifisis_area_ratio"
+    "epifisis_area_ratio",
 ]
 
 hand_img_folder = "./data/boneage-training-dataset"
