@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn import linear_model
 from sklearn.utils import shuffle
 import numpy as np
-import config
+import scripts.config as config
 
 
 def main():

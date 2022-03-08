@@ -9,7 +9,7 @@ from tqdm import tqdm
 from classes.hand import Hand
 
 # from feature_extractor import Featurizer
-import config
+import scripts.config as config
 
 # featurizer = Featurizer()
 

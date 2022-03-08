@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import config
+import scripts.config as config
 import cv2
 import math
 import mediapipe as mp
