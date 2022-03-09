@@ -6,9 +6,9 @@ import re
 import pandas as pd
 import time
 from tqdm import tqdm
-from classes.hand import Hand
+from lib.hand import Hand
 import config as config
-
+import segmentations as segmentations
 
 
 def get_id_from_file_name(_file_name):
@@ -23,13 +23,13 @@ class HandFactory(object):
         self.metadata_dataframe_path = config.hand_metadata_folder
         self.list_hand_files = None
         self.batch_size = config.batch_size
+        self.segments = {}
         
         # Final dataframe where to perform the regression
         # The goal of this class is to compute this
         self.features_df = pd.DataFrame()
         
         self.prepare_list_hand_files()
-        self.prepare_segmentations()
 
     def prepare_list_hand_files(self):
         # We use the segmented hands directory because it containts only a subset
@@ -59,7 +59,8 @@ class HandFactory(object):
             age = int(hand_metadata["boneage"])
             gender = hand_metadata["male"].bool()
             gender = int(gender)
-            hand = Hand(img, age, gender, id, segmented_img)
+            segments = self.get_segments(str(id))
+            hand = Hand(img, age, gender, id, segments)
             success = hand.featurize()
             if success:
                 self.add_hand(hand)
@@ -85,3 +86,7 @@ class HandFactory(object):
         self.features_df = pd.concat(
             [self.features_df, hand_features], ignore_index=True, axis=0
         )
+
+    def get_segments(self, hand_id):
+        return segmentations.get_segmentations(hand_id)
+        

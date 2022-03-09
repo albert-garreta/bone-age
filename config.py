@@ -19,14 +19,14 @@ FEATURES_FOR_DATA_ANALYSIS = [
     "epifisis_area_ratio",
 ]
 
-hand_img_folder = "./data/boneage-training-dataset"
+hand_img_folder = "./data/examples"
 # It is harder for mediapipe to recognize hand landmarks using the
 # segmented hands (no idea why), so I am using both file versions
-segmented_hand_img_folder = "./data/data_tagged"
+segmented_hand_img_folder = "./data/examples"
 hand_metadata_folder = "./data/boneage-training-dataset.csv"
 batch_size = 500
 features_df_path = "./data/features_df.csv"
 training_sample_size = int(0.75 * batch_size)
-annotate_imgs = False
+annotate_imgs = True
 shuffle_data = True
-allow_hand_plotting = False
+allow_hand_plotting = True
