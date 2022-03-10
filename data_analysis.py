@@ -29,14 +29,13 @@ def main():
     # "gap_ratio_13",
     # "gap_ratio_17",]])
     
-    print(df.corr())
     
     df = df.dropna()
 
     df = df.loc[df["gender"] ==1, :]  # only male/female
     
     
-    #PN = PolynomialFeatures(2)
+    #
     
     #print(df)
     #df = df.loc[df["carp_bones_area_ratio"] > 0, :] 
@@ -44,21 +43,28 @@ def main():
     #print(df)
     
     training_data_size = int(len(df)*config.training_sample_size_ratio)
+    
+    #df["boneage"] = np.log(df["boneage"])
+    
+    print(df.corr())
+
+    
     df_train = df.iloc[: training_data_size]
     df_test = df.iloc[-training_data_size :]
     df_test.index = range(len(df_test))
+    
+    
+    
     target_train = df_train["boneage"]
     target_test = df_test["boneage"]
     df_train = df_train.drop("boneage", axis=1)
     df_test = df_test.drop("boneage", axis=1)
     
+    PN = PolynomialFeatures(2)
     #df_train = PN.fit_transform(df_train)
     #df_test = PN.fit_transform(df_test)
     
     reg = linear_model.LinearRegression()
-    print(df_train)
-    print(target_train)
-    print(np.max(df_train))
     scaler  =StandardScaler()
     
     df_train = scaler.fit_transform(df_train)
@@ -66,10 +72,8 @@ def main():
     
     df_test = scaler.transform(df_test)
     preds = reg.predict(df_test)
-
     loss = abs(preds - target_test)
     print(loss.mean())
-    # print(np.sqrt(loss.mean()))
     print(reg.coef_)
     print(reg.intercept_)
     # for i in range(len(preds)):

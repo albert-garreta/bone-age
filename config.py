@@ -3,10 +3,10 @@ called `get_<name of feature>`"""
 ALL_FEATURE_NAMES = [
     "boneage",
     "gender",
-     "gap_ratio_5",
-     "gap_ratio_9",
+    # "gap_ratio_5",
+    # "gap_ratio_9",
      "gap_ratio_13",
-    "gap_ratio_17",
+    #"gap_ratio_17",
     # "gap_5",
     # "gap_9",
     # "gap_13",

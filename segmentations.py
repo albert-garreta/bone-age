@@ -79,7 +79,7 @@ def draw_all_contours(img, segmentations, order=None):
         else {index: segmentations[id] for index, id in enumerate(order)}
     )
     for idx, contour in segmentations.items():
-        print(idx)
+        #print(idx)
         img = _draw_contour(img, contour, str(idx))
     return img
 

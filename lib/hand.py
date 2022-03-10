@@ -103,7 +103,7 @@ class Hand(object):
         return distance / vertical_length
 
     @staticmethod
-    def sum_div_2_points(point1, point2, k=0.4):
+    def sum_div_2_points(point1, point2, k=0.2):
         return (
             (k * point1[0] + (1 - k) * point2[0]),
             (k * point1[1] + (1 - k) * point2[1]),
@@ -199,61 +199,77 @@ class Hand(object):
         else:
             inverse_perp_line_p0_ldk = get_inverse_perp_line(point, constraints[0])
             inverse_perp_line_p1_ldk = get_inverse_perp_line(point, constraints[1])
+            
+            # if inverse_perp_line_p0_ldk and inverse_perp_line_p1_ldk:
+            #     points0 = [(inverse_perp_line_p0_ldk(y), y) for y in range(0,self.img.shape[0], 10)]
+            #     points1 = [(inverse_perp_line_p1_ldk(y), y) for y in range(0,self.img.shape[0], 10)]
+            #     
+            #     segmentations.draw_all_contours(self.img, {0:points0, 1:points1})
+            #     
+            #     annotate_img(self.img, point, "lk")
+            #     print(constraints[0][0], constraints[0][1])
+            #     annotate_img(self.img, (int(constraints[0][0]), int(constraints[0][1])), ".")
+            #     annotate_img(self.img, (int(constraints[1][0]), int(constraints[1][1])), ".")
+            #     
             for seg_id, segment in self.segments.items():
                 # WARNING: !!! fist compoment corresponds to the y-axis of an array!!
 
-                #x_coords = [p[0] for p in segment]
-                #y_coords = [p[1] for p in segment]
+                x_coords = [p[0] for p in segment]
+                y_coords = [p[1] for p in segment]
                 
                 x_centroid, y_centroid = self.get_segment_centroid(segment)
                 
                 if constraints[0] is not None and constraints[1] is not None:
+                    #if (
+                    #    x_centroid < inverse_perp_line_p1_ldk(constraints[1][1]) 
+                    #    and x_centroid > inverse_perp_line_p0_ldk(constraints[0][1])
+                    #):
                     if (
-                        x_centroid < inverse_perp_line_p1_ldk(constraints[1][1]) 
-                        and x_centroid > inverse_perp_line_p0_ldk(constraints[0][1])
+                        max(x_coords) < constraints[1][0] 
+                        and  min(x_coords) > constraints[0][0]
                     ):
                         valid_segments[seg_id] = segment
                 if constraints[0] is None and constraints[1] is not None:
-                    #if max(x_coords) < constraints[1][0]:
-                    if x_centroid < inverse_perp_line_p1_ldk(constraints[1][1]) :
+                    if max(x_coords) < constraints[1][0]:
+                    #if x_centroid < inverse_perp_line_p1_ldk(constraints[1][1]) :
                         valid_segments[seg_id] = segment
                 if constraints[0] is not None and constraints[1] is None:
-                    #if max(x_coords) > constraints[0][0]:
-                    if x_centroid >  inverse_perp_line_p0_ldk(constraints[0][1]):
+                    if min(x_coords) > constraints[0][0]:
+                    #if x_centroid >  inverse_perp_line_p0_ldk(constraints[0][1]):
                         valid_segments[seg_id] = segment
         distances = [
             # (segment_id, segmentations.get_distance_between_contours([point], segment))
             (segment_id, euclidean_distance(point, self.get_segment_centroid(segment)))
             for segment_id, segment in valid_segments.items()
         ]
-
         distances.sort(key=lambda x: x[1])
         closest_segment1 = self.segments[distances[0][0]]
         closest_segment2 = self.segments[distances[1][0]]
-        closest_segment3 = self.segments[distances[2][0]]
-        closest_segment4 = self.segments[distances[3][0]]
+        if False:
+            closest_segment3 = self.segments[distances[2][0]]
+            closest_segment4 = self.segments[distances[3][0]]
 
-        y_coords = [
-            ("p", point[1]),
-            ("s1", self.get_segment_centroid(closest_segment1)[1]),
-            ("s2", self.get_segment_centroid(closest_segment2)[1]),
-            ("s3", self.get_segment_centroid(closest_segment3)[1]),
-            ("s4", self.get_segment_centroid(closest_segment4)[1]),
-        ]
-        y_coords.sort(key=lambda x: x[1])
-        if "p" == y_coords[1][0]:
-            if ("s1" == y_coords[0][0] and "s2" == y_coords[2][0]) or (
-                "s2" == y_coords[0][0] and "s1" == y_coords[2][0]
-            ):
-                pass
-            elif ("s1" == y_coords[0][0] and "s3" == y_coords[2][0]) or (
-                "s3" == y_coords[0][0] and "s1" == y_coords[2][0]
-            ):
-                closest_segment2 = closest_segment3
-            elif ("s2" == y_coords[0][0] and "s3" == y_coords[2][0]) or (
-                "s3" == y_coords[0][0] and "s2" == y_coords[2][0]
-            ):
-                closest_segment1 = closest_segment3
+            y_coords = [
+                ("p", point[1]),
+                ("s1", self.get_segment_centroid(closest_segment1)[1]),
+                ("s2", self.get_segment_centroid(closest_segment2)[1]),
+                ("s3", self.get_segment_centroid(closest_segment3)[1]),
+                ("s4", self.get_segment_centroid(closest_segment4)[1]),
+            ]
+            y_coords.sort(key=lambda x: x[1])
+            if "p" == y_coords[1][0]:
+                if ("s1" == y_coords[0][0] and "s2" == y_coords[2][0]) or (
+                    "s2" == y_coords[0][0] and "s1" == y_coords[2][0]
+                ):
+                    pass
+                elif ("s1" == y_coords[0][0] and "s3" == y_coords[2][0]) or (
+                    "s3" == y_coords[0][0] and "s1" == y_coords[2][0]
+                ):
+                    closest_segment2 = closest_segment3
+                elif ("s2" == y_coords[0][0] and "s3" == y_coords[2][0]) or (
+                    "s3" == y_coords[0][0] and "s2" == y_coords[2][0]
+                ):
+                    closest_segment1 = closest_segment3
 
             # we expect one min_y_coord to be above the y-coord of the landmark point, and the other below
 
