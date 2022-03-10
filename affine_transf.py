@@ -13,10 +13,10 @@ def find_transformation(default_lungs, segm_ret):
     criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 100, 1e-7)
     try:
         (cc, warp_matrix) = cv2.findTransformECC(
-            segm_ret, default_lungs, warp_matrix, cv2.MOTION_AFFINE, criteria
+             default_lungs, segm_ret, warp_matrix, cv2.MOTION_AFFINE, criteria
         )
-        default_lungs = cv2.warpAffine(
-            default_lungs,
+        segm_ret = cv2.warpAffine(
+            segm_ret,
             warp_matrix,
             (image_size[1], image_size[0]),
             flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP,
@@ -24,10 +24,10 @@ def find_transformation(default_lungs, segm_ret):
             borderValue=0,
         )
     except:
-        default_lungs = np.zeros((image_size[1], image_size[0]))
+        segm_ret = np.zeros((image_size[1], image_size[0]))
         a = 2
-
-    return [default_lungs, a, warp_matrix]
+    segm_ret = cv2.cvtColor(segm_ret.astype(np.uint8), cv2.COLOR_GRAY2BGR)
+    return [segm_ret, a, warp_matrix]
 
 if __name__ == '__main__':
     id1 = 10150

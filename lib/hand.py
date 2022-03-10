@@ -2,14 +2,16 @@ import matplotlib.pyplot as plt
 import config as config
 import cv2
 import math
+import os
 import numpy as np
 import segmentations as segmentations
 import mediapipe as mp
-from lib.utils import annotate_img
+from lib.utils import annotate_img, euclidean_distance, get_line_function, get_inverse_perp_line
+from lib.hand_utils import get_consecutive_ldk_distances
 import config
 from matplotlib.pyplot import figure
 
-figure(figsize=(16, 12), dpi=80)
+figure(figsize=(12, 8), dpi=80)
 
 mp_hands = mp.solutions.hands.Hands()
 mp_draw = mp.solutions.drawing_utils
@@ -44,13 +46,14 @@ class Hand(object):
         or attributes being used.
         """
         for feature_name in config.ALL_FEATURE_NAMES:
-            # try:
-            # print(feature_name)
-            feature_value = eval(f"self.get_{feature_name}()")
-            setattr(self, feature_name, feature_value)
-        # except Exception as e:
-        #    print(e)
-        #    return False
+            try:
+                # print(feature_name)
+                feature_value = eval(f"self.get_{feature_name}()")
+                setattr(self, feature_name, feature_value)
+            except Exception as e:
+                print(e)
+                return False
+        #self.show()
         return True
 
     def get_boneage(self):
@@ -59,47 +62,344 @@ class Hand(object):
     def get_gender(self):
         return self.gender
 
-    def get_metacarp_20_23_gap(self):
-        """get the distance between bone 20 and 23 (see ref_hand.png)
-        or between 21 and 22 when these bones exists"""
-        return self._get_metacarp_gap(idx1=20, idx2=23)
+    def get_gap_ratio_9(self):
+        distance = self.get_gap_9()
+        vertical_length = self._get_consecutive_ldk_distances([0, 9, 10, 11, 12])
+        return distance / vertical_length
 
-    def get_metacarp_27_30_gap(self):
-        return self._get_metacarp_gap(idx1=27, idx2=30)
+    def get_gap_ratio_5(self):
+        distance = self.get_gap_5()
+        vertical_length = self._get_consecutive_ldk_distances([0, 5, 6, 7, 8])
+        return distance / vertical_length
 
-    def get_metacarp_4_7_gap(self):
-        return self._get_metacarp_gap(idx1=4, idx2=7)
+    def get_gap_ratio_13(self):
+        distance = self.get_gap_13()
+        vertical_length = self._get_consecutive_ldk_distances([0, 13, 14, 15, 16])
+        return distance / vertical_length
 
-    def get_metacarp_12_15_gap(self):
-        return self._get_metacarp_gap(idx1=12, idx2=15)
+    def get_gap_ratio_17(self):
+        distance = self.get_gap_17()
+        vertical_length = self._get_consecutive_ldk_distances([0, 17, 18, 19, 20])
+        return distance / vertical_length
 
-    def _get_metacarp_gap(self, idx1, idx2):
-        assert idx2 == idx1 + 3
-        bone_idx1_contour = self.segments[idx1]
-        bone_idx1_1_contour = self.segments[idx1 + 1]
-        bone_idx2_1_contour = self.segments[idx2 - 1]
-        bone_idx_2_contour = self.segments[idx2]
-        first_bone_contour = (
-            bone_idx1_1_contour if bone_idx1_1_contour else bone_idx1_contour
+    def get_gap_ratio_10(self):
+        distance = self.get_gap_10()
+        vertical_length = self._get_consecutive_ldk_distances([0, 9, 10, 11, 12])
+        return distance / vertical_length
+
+    def get_gap_ratio_6(self):
+        distance = self.get_gap_6()
+        vertical_length = self._get_consecutive_ldk_distances([0, 5, 6, 7, 8])
+        return distance / vertical_length
+
+    def get_gap_ratio_14(self):
+        distance = self.get_gap_14()
+        vertical_length = self._get_consecutive_ldk_distances([0, 13, 14, 15, 16])
+        return distance / vertical_length
+
+    def get_gap_ratio_18(self):
+        distance = self.get_gap_18()
+        vertical_length = self._get_consecutive_ldk_distances([0, 17, 18, 19, 20])
+        return distance / vertical_length
+
+    @staticmethod
+    def sum_div_2_points(point1, point2, k=0.4):
+        return (
+            (k * point1[0] + (1 - k) * point2[0]),
+            (k * point1[1] + (1 - k) * point2[1]),
         )
-        second_bone_contour = (
-            bone_idx2_1_contour if bone_idx2_1_contour else bone_idx_2_contour
+
+    def get_gap_9(self):
+        constraints = [
+            self.sum_div_2_points(self.landmarks[9], self.landmarks[13]),
+            self.sum_div_2_points(self.landmarks[9], self.landmarks[5]),
+        ]
+        return self._get_dist_to_point_of_centroid_closest_two_segments(
+            self.landmarks[9], constraints
         )
-        distance = segmentations.get_distance_between_contours(
-            first_bone_contour, second_bone_contour
+
+    def get_gap_5(self):
+        constraints = [
+            self.sum_div_2_points(self.landmarks[5], self.landmarks[9]),
+            None,
+        ]
+        return self._get_dist_to_point_of_centroid_closest_two_segments(
+            self.landmarks[5], constraints
         )
-        return distance
+
+    def get_gap_13(self):
+        constraints = [
+            self.sum_div_2_points(self.landmarks[13], self.landmarks[17]),
+            self.sum_div_2_points(self.landmarks[13], self.landmarks[9]),
+        ]
+        return self._get_dist_to_point_of_centroid_closest_two_segments(
+            self.landmarks[13], constraints
+        )
+
+    def get_gap_17(self):
+        constraints = [
+            None,
+            self.sum_div_2_points(self.landmarks[17], self.landmarks[13]),
+        ]
+        return self._get_dist_to_point_of_centroid_closest_two_segments(
+            self.landmarks[17], constraints
+        )
+
+    def get_gap_6(self):
+        constraints = [
+            self.sum_div_2_points(self.landmarks[6], self.landmarks[10]),
+            None,
+        ]
+        return self._get_dist_to_point_of_centroid_closest_two_segments(
+            self.landmarks[6], constraints
+        )
+
+    def get_gap_10(self):
+        constraints = [
+            self.sum_div_2_points(self.landmarks[10], self.landmarks[14]),
+            self.sum_div_2_points(self.landmarks[10], self.landmarks[6]),
+        ]
+        return self._get_dist_to_point_of_centroid_closest_two_segments(
+            self.landmarks[10], constraints
+        )
+
+    def get_gap_14(self):
+        constraints = [
+            self.sum_div_2_points(self.landmarks[14], self.landmarks[18]),
+            self.sum_div_2_points(self.landmarks[14], self.landmarks[10]),
+        ]
+        return self._get_dist_to_point_of_centroid_closest_two_segments(
+            self.landmarks[14], constraints
+        )
+
+    def get_gap_18(self):
+        constraints = [
+            None,
+            self.sum_div_2_points(self.landmarks[18], self.landmarks[14]),
+        ]
+        return self._get_dist_to_point_of_centroid_closest_two_segments(
+            self.landmarks[18], constraints
+        )
+
+    def _get_consecutive_ldk_distances(self, list_of_landmarks):
+        return get_consecutive_ldk_distances(self.landmarks, list_of_landmarks)
+
+    @staticmethod
+    def get_segment_centroid(segment):
+        center_x = int(np.mean([p[0] for p in segment]))
+        center_y = int(np.mean([p[1] for p in segment]))
+        return (center_x, center_y)
+
+    def _get_dist_to_point_of_centroid_closest_two_segments(
+        self, point, constraints=None
+    ):
+        valid_segments = {}
+        if constraints is None:
+            valid_segments = self.segments
+        else:
+            inverse_perp_line_p0_ldk = get_inverse_perp_line(point, constraints[0])
+            inverse_perp_line_p1_ldk = get_inverse_perp_line(point, constraints[1])
+            for seg_id, segment in self.segments.items():
+                # WARNING: !!! fist compoment corresponds to the y-axis of an array!!
+
+                #x_coords = [p[0] for p in segment]
+                #y_coords = [p[1] for p in segment]
+                
+                x_centroid, y_centroid = self.get_segment_centroid(segment)
+                
+                if constraints[0] is not None and constraints[1] is not None:
+                    if (
+                        x_centroid < inverse_perp_line_p1_ldk(constraints[1][1]) 
+                        and x_centroid > inverse_perp_line_p0_ldk(constraints[0][1])
+                    ):
+                        valid_segments[seg_id] = segment
+                if constraints[0] is None and constraints[1] is not None:
+                    #if max(x_coords) < constraints[1][0]:
+                    if x_centroid < inverse_perp_line_p1_ldk(constraints[1][1]) :
+                        valid_segments[seg_id] = segment
+                if constraints[0] is not None and constraints[1] is None:
+                    #if max(x_coords) > constraints[0][0]:
+                    if x_centroid >  inverse_perp_line_p0_ldk(constraints[0][1]):
+                        valid_segments[seg_id] = segment
+        distances = [
+            # (segment_id, segmentations.get_distance_between_contours([point], segment))
+            (segment_id, euclidean_distance(point, self.get_segment_centroid(segment)))
+            for segment_id, segment in valid_segments.items()
+        ]
+
+        distances.sort(key=lambda x: x[1])
+        closest_segment1 = self.segments[distances[0][0]]
+        closest_segment2 = self.segments[distances[1][0]]
+        closest_segment3 = self.segments[distances[2][0]]
+        closest_segment4 = self.segments[distances[3][0]]
+
+        y_coords = [
+            ("p", point[1]),
+            ("s1", self.get_segment_centroid(closest_segment1)[1]),
+            ("s2", self.get_segment_centroid(closest_segment2)[1]),
+            ("s3", self.get_segment_centroid(closest_segment3)[1]),
+            ("s4", self.get_segment_centroid(closest_segment4)[1]),
+        ]
+        y_coords.sort(key=lambda x: x[1])
+        if "p" == y_coords[1][0]:
+            if ("s1" == y_coords[0][0] and "s2" == y_coords[2][0]) or (
+                "s2" == y_coords[0][0] and "s1" == y_coords[2][0]
+            ):
+                pass
+            elif ("s1" == y_coords[0][0] and "s3" == y_coords[2][0]) or (
+                "s3" == y_coords[0][0] and "s1" == y_coords[2][0]
+            ):
+                closest_segment2 = closest_segment3
+            elif ("s2" == y_coords[0][0] and "s3" == y_coords[2][0]) or (
+                "s3" == y_coords[0][0] and "s2" == y_coords[2][0]
+            ):
+                closest_segment1 = closest_segment3
+
+            # we expect one min_y_coord to be above the y-coord of the landmark point, and the other below
+
+        annotate_img(self.img, point, "A")
+        segmentations.draw_all_contours(
+            self.img, {1: closest_segment1, 2: closest_segment2}
+        )
+
+        gap_length = segmentations.get_distance_between_contours(
+            closest_segment1, closest_segment2
+        )
+        return gap_length
+
+    @staticmethod
+    def get_min_y_coord(list_of_points):  #
+        return [p[1] for p in list_of_points]
+
+    def get_carp_bones_max_distances(self):
+        # print(self.id)
+        # self.draw_landmarks()
+        # segmentations.draw_all_contours(self.img, self.segments)
+        # self.show()
+        self.green_segments = segmentations.detect_color_segments(
+            self.id, self.segments, "green"
+        )
+        # segmentations.draw_all_contours(self.img, self.green_segments)
+        green_seg_list = list(self.green_segments.values())
+        if len(green_seg_list) > 0:
+            green_seg_pair_list = [
+                (seg1, seg2)
+                for idx, seg1 in enumerate(green_seg_list)
+                for seg2 in green_seg_list[idx:]
+            ]
+            distances = []
+            for segment_pair in green_seg_pair_list:
+                distances.append(
+                    segmentations.get_distance_between_contours(*segment_pair)
+                )
+            carp_bones_max_distances = max(distances)
+        else:
+            carp_bones_max_distances = 0
+        self.carp_bones_max_distances = carp_bones_max_distances
+        return carp_bones_max_distances
+
+    def get_carp_bones_max_distances_ratio(self):
+        return self.carp_bones_max_distances / euclidean_distance(
+            self.landmarks[13], self.landmarks[9]
+        )
 
     def get_carp_bones_max_diameter(self):
-        carp_bone_indices = range(37, 45)
-        diameters = []
-        for idx in carp_bone_indices:
-            diameters.append(segmentations.get_diameter(self.segments[idx]))
-        return np.max(diameters)
+        if len(self.green_segments) > 0:
+            carp_bones_max_diameter = max(
+                [
+                    segmentations.get_diameter(segment)
+                    for segment in self.green_segments.values()
+                ]
+            )
+        else:
+            carp_bones_max_diameter = 0
+        self.carp_bones_max_diameter = carp_bones_max_diameter
+        return carp_bones_max_diameter
 
-    def get_epifisis_diameter(self):
-        epifisis_index = 45
-        return segmentations.get_diameter(self.segments[epifisis_index])
+    def get_carp_bones_sum_perimeters(self):
+        if len(self.green_segments) > 0:
+            carp_bones_sum_perimeters = np.sum(
+                [
+                    segmentations.get_perimeter(segment)
+                    for segment in self.green_segments.values()
+                ]
+            )
+        else:
+            carp_bones_sum_perimeters = 0
+        self.carp_bones_sum_perimeters = carp_bones_sum_perimeters
+        return carp_bones_sum_perimeters
+
+    def get_yellow_sum_perimeters(self):
+        self.yellow_segments = segmentations.detect_color_segments(
+            self.id, self.segments, "yellow"
+        )
+
+        if len(self.yellow_segments) > 0:
+            yellow_sum_perimeters = np.sum(
+                [
+                    segmentations.get_perimeter(segment)
+                    for segment in self.yellow_segments.values()
+                ]
+            )
+        else:
+            yellow_sum_perimeters = 0
+        self.yellow_sum_perimeters = yellow_sum_perimeters
+        return yellow_sum_perimeters
+
+    def get_yellow_ratio_green(self):
+        return self.carp_bones_sum_perimeters / self.yellow_sum_perimeters
+
+    def get_carp_bones_sum_perimeters_ratio(self):
+        return self.carp_bones_sum_perimeters / euclidean_distance(
+            self.landmarks[0], self.landmarks[5]
+        )
+
+    def get_max_purple_diameter(self):
+        self.purple_segments = segmentations.detect_color_segments(
+            self.id, self.segments, "purple"
+        )
+        if len(self.purple_segments) > 0:
+            max_purple_diameter = max(
+                [
+                    segmentations.get_diameter(segment)
+                    for segment in self.purple_segments.values()
+                ]
+            )
+        else:
+            max_purple_diameter = 0
+        self.max_purple_diameter = max_purple_diameter
+        return max_purple_diameter
+
+    def get_max_purple_diameter_ratio(self):
+        return self.max_purple_diameter / euclidean_distance(
+            self.landmarks[0], self.landmarks[5]
+        )
+
+    def get_carp_bones_max_diameter_ratio(self):
+        return self.carp_bones_max_diameter / euclidean_distance(
+            self.landmarks[13], self.landmarks[9]
+        )
+
+    def get_epifisis_max_diameter(self):
+        self.red_segments = segmentations.detect_color_segments(
+            self.id, self.segments, "red"
+        )
+        if len(self.red_segments) > 0:
+            epifisis_max_diameter = max(
+                [
+                    segmentations.get_diameter(segment)
+                    for segment in self.red_segments.values()
+                ]
+            )
+        else:
+            epifisis_max_diameter = 0
+        self.epifisis_max_diameter = epifisis_max_diameter
+        return epifisis_max_diameter
+
+    def get_epifisis_max_diameter_ratio(self):
+        return self.epifisis_max_diameter / euclidean_distance(
+            self.landmarks[13], self.landmarks[9]
+        )
 
     """----------------------------------------------------------------
     Get google's mediapipe's hand lanmarks methods
@@ -110,6 +410,8 @@ class Hand(object):
         """Creates the attribute `landmarks`: a dictionary with items of the form:
         landmark_id (int) : (x_coordinate, y_coordinate)
         """
+        # img = self.img if not config.do_affine_transform else cv2.imread(config.hand_img_folder + f"{self.id}.png")
+        self.landmarks = None
         raw_landmarks, success = self._get_raw_landmarks()
         if not success:
             print(
@@ -120,6 +422,15 @@ class Hand(object):
         else:
             self.raw_landmarks = raw_landmarks
             self._convert_raw_landmarks()
+
+        # if config.do_affine_transform and self.raw_landmarks:
+        #     matrix = np.load(os.path.join(config.matrices_dir, f"{self.id}_matrix.npy"))
+        #     matrix = matrix[[1,0],:]
+        #     for ldk_id, ldk in self.landmarks.items():
+        #         ldk = np.array(ldk)
+        #         self.landmarks[ldk_id] =np.matmul(matrix[:, :-1], np.transpose(np.array([ldk]), [1,0])).flatten() + matrix[:,-1]
+
+        return True
 
     def _get_raw_landmarks(self):
         mp_result = mp_hands.process(self.img)
