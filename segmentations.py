@@ -194,12 +194,19 @@ if __name__ == "__main__":
     keys = []
     weird_cases = []
     random.shuffle(files_list)
+    
     for file_name in files_list:
-        key = inspect_json(file_name.split(".")[0])
-        keys.append(key)
-        if key.split(".")[0] != file_name.split(".")[0]:
-            weird_cases.append(key)
-            os.remove(os.path.join("data/jsons", file_name))
+        try:
+            key = inspect_json(file_name.split(".")[0])
+            keys.append(key)
+            id = key.split(".")[0]
+            if id != file_name.split(".")[0]:
+                weird_cases.append(key)
+                plt.imshow()
+                #os.remove(os.path.join("data/jsons", file_name))
+        except Exception as e:
+            print("Error")
+            print(e)
     print(len(files_list))
     print(len(weird_cases))
     print(len(set(keys)))

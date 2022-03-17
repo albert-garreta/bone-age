@@ -6,7 +6,12 @@ import os
 import numpy as np
 import segmentations as segmentations
 import mediapipe as mp
-from lib.utils import annotate_img, euclidean_distance, get_line_function, get_inverse_perp_line
+from lib.utils import (
+    annotate_img,
+    euclidean_distance,
+    get_line_function,
+    get_inverse_perp_line,
+)
 from lib.hand_utils import get_consecutive_ldk_distances
 import config
 from matplotlib.pyplot import figure
@@ -28,6 +33,7 @@ class Hand(object):
         # list of 47 contours (contour = list of points) for each bone
         # if the bone does not exist, then there is None in its place
         self.segments = _segments
+
 
     """----------------------------------------------------------------
     Feature creation methods
@@ -51,10 +57,11 @@ class Hand(object):
                 feature_value = eval(f"self.get_{feature_name}()")
                 setattr(self, feature_name, feature_value)
             except Exception as e:
+                print(f"Exception encountered when creating feature {feature_name}")
                 print(e)
-                return False
-        #self.show()
-        return True
+                return False, feature_name
+        # self.show()
+        return True, None
 
     def get_boneage(self):
         return self.boneage
@@ -65,42 +72,42 @@ class Hand(object):
     def get_gap_ratio_9(self):
         distance = self.get_gap_9()
         vertical_length = self._get_consecutive_ldk_distances([0, 9, 10, 11, 12])
-        return distance / vertical_length
+        return distance / max(0.1, vertical_length)
 
     def get_gap_ratio_5(self):
         distance = self.get_gap_5()
         vertical_length = self._get_consecutive_ldk_distances([0, 5, 6, 7, 8])
-        return distance / vertical_length
+        return distance / max(0.1, vertical_length)
 
     def get_gap_ratio_13(self):
         distance = self.get_gap_13()
         vertical_length = self._get_consecutive_ldk_distances([0, 13, 14, 15, 16])
-        return distance / vertical_length
+        return distance / max(0.1, vertical_length)
 
     def get_gap_ratio_17(self):
         distance = self.get_gap_17()
         vertical_length = self._get_consecutive_ldk_distances([0, 17, 18, 19, 20])
-        return distance / vertical_length
+        return distance / max(0.1, vertical_length)
 
     def get_gap_ratio_10(self):
         distance = self.get_gap_10()
         vertical_length = self._get_consecutive_ldk_distances([0, 9, 10, 11, 12])
-        return distance / vertical_length
+        return distance / max(0.1, vertical_length)
 
     def get_gap_ratio_6(self):
         distance = self.get_gap_6()
         vertical_length = self._get_consecutive_ldk_distances([0, 5, 6, 7, 8])
-        return distance / vertical_length
+        return distance / max(0.1, vertical_length)
 
     def get_gap_ratio_14(self):
         distance = self.get_gap_14()
         vertical_length = self._get_consecutive_ldk_distances([0, 13, 14, 15, 16])
-        return distance / vertical_length
+        return distance / max(0.1, vertical_length)
 
     def get_gap_ratio_18(self):
         distance = self.get_gap_18()
         vertical_length = self._get_consecutive_ldk_distances([0, 17, 18, 19, 20])
-        return distance / vertical_length
+        return distance / max(0.1, vertical_length)
 
     @staticmethod
     def sum_div_2_points(point1, point2, k=0.2):
@@ -199,43 +206,43 @@ class Hand(object):
         else:
             inverse_perp_line_p0_ldk = get_inverse_perp_line(point, constraints[0])
             inverse_perp_line_p1_ldk = get_inverse_perp_line(point, constraints[1])
-            
+
             # if inverse_perp_line_p0_ldk and inverse_perp_line_p1_ldk:
             #     points0 = [(inverse_perp_line_p0_ldk(y), y) for y in range(0,self.img.shape[0], 10)]
             #     points1 = [(inverse_perp_line_p1_ldk(y), y) for y in range(0,self.img.shape[0], 10)]
-            #     
+            #
             #     segmentations.draw_all_contours(self.img, {0:points0, 1:points1})
-            #     
+            #
             #     annotate_img(self.img, point, "lk")
             #     print(constraints[0][0], constraints[0][1])
             #     annotate_img(self.img, (int(constraints[0][0]), int(constraints[0][1])), ".")
             #     annotate_img(self.img, (int(constraints[1][0]), int(constraints[1][1])), ".")
-            #     
+            #
             for seg_id, segment in self.segments.items():
                 # WARNING: !!! fist compoment corresponds to the y-axis of an array!!
 
                 x_coords = [p[0] for p in segment]
                 y_coords = [p[1] for p in segment]
-                
+
                 x_centroid, y_centroid = self.get_segment_centroid(segment)
-                
+
                 if constraints[0] is not None and constraints[1] is not None:
-                    #if (
-                    #    x_centroid < inverse_perp_line_p1_ldk(constraints[1][1]) 
+                    # if (
+                    #    x_centroid < inverse_perp_line_p1_ldk(constraints[1][1])
                     #    and x_centroid > inverse_perp_line_p0_ldk(constraints[0][1])
-                    #):
+                    # ):
                     if (
-                        max(x_coords) < constraints[1][0] 
-                        and  min(x_coords) > constraints[0][0]
+                        max(x_coords) < constraints[1][0]
+                        and min(x_coords) > constraints[0][0]
                     ):
                         valid_segments[seg_id] = segment
                 if constraints[0] is None and constraints[1] is not None:
                     if max(x_coords) < constraints[1][0]:
-                    #if x_centroid < inverse_perp_line_p1_ldk(constraints[1][1]) :
+                        # if x_centroid < inverse_perp_line_p1_ldk(constraints[1][1]) :
                         valid_segments[seg_id] = segment
                 if constraints[0] is not None and constraints[1] is None:
                     if min(x_coords) > constraints[0][0]:
-                    #if x_centroid >  inverse_perp_line_p0_ldk(constraints[0][1]):
+                        # if x_centroid >  inverse_perp_line_p0_ldk(constraints[0][1]):
                         valid_segments[seg_id] = segment
         distances = [
             # (segment_id, segmentations.get_distance_between_contours([point], segment))
@@ -366,9 +373,9 @@ class Hand(object):
         return self.carp_bones_sum_perimeters / self.yellow_sum_perimeters
 
     def get_carp_bones_sum_perimeters_ratio(self):
-        return self.carp_bones_sum_perimeters / euclidean_distance(
+        return self.carp_bones_sum_perimeters / max(0.5, euclidean_distance(
             self.landmarks[0], self.landmarks[5]
-        )
+        ))
 
     def get_max_purple_diameter(self):
         self.purple_segments = segmentations.detect_color_segments(
@@ -387,14 +394,14 @@ class Hand(object):
         return max_purple_diameter
 
     def get_max_purple_diameter_ratio(self):
-        return self.max_purple_diameter / euclidean_distance(
+        return self.max_purple_diameter / max(0.5,euclidean_distance(
             self.landmarks[0], self.landmarks[5]
-        )
+        ))
 
     def get_carp_bones_max_diameter_ratio(self):
-        return self.carp_bones_max_diameter / euclidean_distance(
+        return self.carp_bones_max_diameter / max(0.5, euclidean_distance(
             self.landmarks[13], self.landmarks[9]
-        )
+        ))
 
     def get_epifisis_max_diameter(self):
         self.red_segments = segmentations.detect_color_segments(
@@ -413,9 +420,9 @@ class Hand(object):
         return epifisis_max_diameter
 
     def get_epifisis_max_diameter_ratio(self):
-        return self.epifisis_max_diameter / euclidean_distance(
+        return self.epifisis_max_diameter / max(0.5,euclidean_distance(
             self.landmarks[13], self.landmarks[9]
-        )
+        ))
 
     """----------------------------------------------------------------
     Get google's mediapipe's hand lanmarks methods
@@ -550,7 +557,7 @@ class Hand(object):
         if config.allow_hand_plotting:
             plt.imshow(self.img)
             plt.title(
-                f"Hand id {self.id}, boneage {self.boneage}, gender {self.gender}"
+                f"Hand id {self.id}"#, boneage {self.boneage}, gender {self.gender}"
             )
             plt.show()
         else:

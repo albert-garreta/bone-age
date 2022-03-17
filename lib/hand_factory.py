@@ -29,6 +29,16 @@ class HandFactory(object):
         # Final dataframe where to perform the regression
         # The goal of this class is to compute this
         self.features_df = pd.DataFrame()
+        
+        # Contains a dictionary mapping each feature to a list of hand ids
+        # for which the feature cannot be created
+        # It also contains the keys `create_landmarks` and `read_files`
+        # mapping to similar lists
+        self.error_info = {
+            feature_name: [] for feature_name in config.ALL_FEATURE_NAMES
+        }
+        self.error_info["create_landmarks"] = []
+        self.error_info["read_file"] = []
 
         self.prepare_list_hand_files()
 
@@ -60,6 +70,7 @@ class HandFactory(object):
             img = cv2.imread(img_file)
             if img is None:
                 fails+=1
+                self.error_info["read_file"].append(hand_file.split(".")[0])
                 continue
             #if f"{id}_affine.png" not in os.listdir():
             #    img, a, matrix = find_transformation(config.default_img, img)
@@ -86,15 +97,23 @@ class HandFactory(object):
             success = hand.get_hand_landmarks()
             if not success:
                 fails +=1
+                self.error_info["create_landmarks"].append(str(id))
                 continue
-            success = hand.featurize()
+            success, feature_name_that_failed = hand.featurize()
             if success:
                 self.add_hand(hand)
             else:
                 fails +=1
+                self.error_info[feature_name_that_failed].append(str(id))
 
         print("Extraction complete")
         print(f"Failed to extract {fails} features out of {len(self.list_hand_files)} files")
+        print("Errors encountered in the following files:")
+        with open("data/error_info.txt", "w") as f:
+            for key, value in self.error_info.items():
+                print(key, value)
+                f.write(f"{key}: {value}")
+                
         self.add_all_hand_features_to_df()
         self.features_df.to_csv(config.features_df_path)
 
@@ -109,7 +128,7 @@ class HandFactory(object):
         hand_features = pd.DataFrame(
             {
                 feature: [getattr(_hand, feature)]
-                for feature in config.FEATURES_FOR_DATA_ANALYSIS
+                for feature in config.ALL_FEATURE_NAMES
             }
         )
         self.features_df = pd.concat(
