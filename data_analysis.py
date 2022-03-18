@@ -9,26 +9,24 @@ from sklearn.preprocessing import StandardScaler, PolynomialFeatures
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import scipy.stats as st
-
+from datetime import datetime
 
 def main_train_test_fun(df):
     df = shuffle(df).reset_index(drop=True)
     training_data_size = int(len(df) * config.training_sample_size_ratio)
-    
+
     df = df[config.FEATURES_FOR_DATA_ANALYSIS]
-    
+
     df_train = df.iloc[:training_data_size]
     df_test = df.iloc[training_data_size:]
+    if len(df_train) == 0 or len(df_test) == 0:
+        return None
     df_test.index = range(len(df_test))
 
     target_train = df_train["boneage"]
     target_test = df_test["boneage"]
     df_train = df_train.drop("boneage", axis=1)
     df_test = df_test.drop("boneage", axis=1)
-
-    PN = PolynomialFeatures(2)
-    # df_train = PN.fit_transform(df_train)
-    # df_test = PN.fit_transform(df_test)
 
     reg = linear_model.LinearRegression()
     scaler = StandardScaler()
@@ -38,10 +36,24 @@ def main_train_test_fun(df):
 
     df_test = scaler.transform(df_test)
     preds = reg.predict(df_test)
-   # print(preds)
-    #print(target_test)
     disparity = preds - target_test
     return disparity
+
+
+def process_data_by_gender_and_age_bounds(df, gender, age_bounds):
+    try:
+        df_restricted = df.loc[df["gender"] == gender, :]  # only male/female
+        df_restricted = df_restricted.loc[df_restricted["boneage"] <= age_bounds[1]]
+        df_restricted = df_restricted.loc[df_restricted["boneage"] >= age_bounds[0]]
+        training_data_size = int(len(df_restricted) * config.training_sample_size_ratio)
+        test_data_size = len(df_restricted) - training_data_size
+        print("Size training and test data:", training_data_size, test_data_size)
+        return df_restricted
+    except Exception as e:
+        #raise Exception
+        print(e)
+        return None
+
 
 
 def main():
@@ -53,33 +65,38 @@ def main():
     print(df.head())
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df = df.dropna()
-    for gender in [0,1]:
-        for age_center in range(19, 20):#[12*year for year in range(0,20)]:
-            df_restricted = df.loc[df["gender"] == gender, :]  # only male/female
-            #df_restricted = df_restricted.loc[df_restricted["boneage"] <= 12*(age_center + 1),:]
-            #df_restricted = df_restricted.loc[df_restricted["boneage"] >=  12*(age_center - 1),:]
-            training_data_size = int(len(df_restricted) * config.training_sample_size_ratio)
-            test_data_size = len(df_restricted) -training_data_size
-            print("Size training and test data:", training_data_size, test_data_size)
-            
-            losses = []
-            if training_data_size >0 and test_data_size>0:
-                for _ in tqdm(range(1)):
-                    disparity = main_train_test_fun(df_restricted)
-                    print(disparity)
-                    loss = abs(disparity)
-                    losses.append(loss.mean())
-                    interval = st.t.interval(alpha=0.95, df=len(disparity)-1, loc=np.mean(disparity), scale=st.sem(disparity)) 
-                    print(interval)
-                    print(np.std(loss))
-                    pd.Series(disparity).hist()
-                    plt.show()
-                print(f"Average losses for gender {gender} and age center {age_center}: ", np.mean(losses))
-            
-
-    # print(reg.coef_)
-    # print(reg.intercept_)
-
-
+    
+    with open("./logs/test.log", "w") as f:
+        f.write(f"Test results for {datetime.now()}\n\n")
+    
+    all_losses_std = []
+    all_losses_mean = []
+    all_num_samples_for_range = []
+    for age_bounds in config.AGE_BOUNDS:
+        losses_std = []
+        losses_mean = []
+        num_samples_for_range = 0
+        for gender in [0, 1]:
+            print(age_bounds, gender)
+            df_restricted = process_data_by_gender_and_age_bounds(df, gender, age_bounds)
+            num_samples_for_range += len(df_restricted)
+            for _ in tqdm(range(100)):
+                disparity = main_train_test_fun(df_restricted)
+                loss = abs(disparity)
+                losses_std.append(np.std(loss))
+                losses_mean.append(np.mean(loss))
+        msg = f"Age bounds {age_bounds[0]/12} <= age (years) <= {age_bounds[1]/12}\n    Std of age disparity: {round(np.mean(losses_std),3)} (months). Mean absolute error: {round(np.mean(losses_mean),3)}. Num samples for range: {num_samples_for_range}\n"
+        # with open("./logs/test.log", "a") as f:
+        #     f.write(msg)
+        all_losses_mean.append(round(np.mean(losses_mean),3))
+        all_losses_std.append(round(np.mean(losses_std),3))
+        all_num_samples_for_range.append(num_samples_for_range)
+    df_results = pd.DataFrame({"age_bounds (years)": config.AGE_BOUNDS, "Std age disparity (months)": all_losses_std, "Mean error": all_losses_mean, "Num samples": all_num_samples_for_range})
+    print(df_results)
+    df_results.to_csv("./logs/test_results.csv")  
+    msg = f"{df_results}"
+    with open("./logs/test.log", "a") as f:
+        f.write(msg)
+    
 if __name__ == "__main__":
     main()
