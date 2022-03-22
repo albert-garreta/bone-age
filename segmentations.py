@@ -15,7 +15,7 @@ from scipy.spatial import ConvexHull
 import random
 
 
-def get_segmentations(id) -> dict:
+def get_segmentations(id, hand_dimensions) -> dict:
     """
     Returns:
         dict: hand_id: str  -> list_of_contours (each contour is a list of points): list[list[tuple(float, float)]]
@@ -25,11 +25,14 @@ def get_segmentations(id) -> dict:
     first_key = list(file.keys())[0]
     # bone_ids = [hand_info["id"] for hand_info in file["items"]]
     regions = file[first_key]["regions"]
+    hand_x_dim, hand_y_dim = hand_dimensions[:2]
+    print(hand_dimensions)
     segmentations = {
         region_idx: [
             (
-                regions[region_idx]["shape_attributes"]["all_points_x"][point_idx],
-                regions[region_idx]["shape_attributes"]["all_points_y"][point_idx],
+                # WARNING: sometimes the points are out of the image by one pixel
+                max(0, min(hand_x_dim, regions[region_idx]["shape_attributes"]["all_points_x"][point_idx])),
+                max(0, min(hand_y_dim, regions[region_idx]["shape_attributes"]["all_points_y"][point_idx])),
             )
             for point_idx in range(
                 len(regions[region_idx]["shape_attributes"]["all_points_x"])
@@ -153,18 +156,6 @@ def apply_warp(img_gray, matrix):
     )
 
 
-def detect_color_segments(id, segments, color):
-    color_segments = {}
-    colored_img = cv2.imread(os.path.join(config.colored_data_dir, f"{id}.png"))
-    if config.do_affine_transform:
-        matrix = np.load(os.path.join(config.affine_matrices_dir, f"{id}_matrix.npy"))
-        b, g, r = cv2.split(colored_img)
-        b, g, r = apply_warp(b, matrix), apply_warp(g, matrix), apply_warp(r, matrix)
-        colored_img = cv2.merge((b, g, r))
-    for segment_id, segment in segments.items():
-        if has_color(colored_img, segment, color):
-            color_segments[segment_id] = segment
-    return color_segments
 
 
 if __name__ == "__main__":

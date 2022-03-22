@@ -1,3 +1,5 @@
+import sys
+sys.path.append('../bone-age')
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -7,7 +9,7 @@ import pandas as pd
 import time
 from tqdm import tqdm
 from lib.hand import Hand
-import config as config
+import config
 import segmentations as segmentations
 from affine_transf import find_transformation
 
@@ -64,6 +66,11 @@ class HandFactory(object):
         fails = 0
         print("Extracting features from hands...")
         for hand_file in tqdm(self.list_hand_files):
+            if hand_file.split("0")[0] in config.FORBIDDEN_IMGS:
+                print(f"Skipping {hand_file}")
+                continue
+            print(f"Processing  {hand_file}")
+
             id = get_id_from_file_name(hand_file)
             hand_file = hand_file if not config.do_affine_transform else hand_file.split(".")[0] + "_affine.png"
             img_file = os.path.join(self.hand_images_directory, hand_file)
@@ -72,23 +79,14 @@ class HandFactory(object):
                 fails+=1
                 self.error_info["read_file"].append(hand_file.split(".")[0])
                 continue
-            #if f"{id}_affine.png" not in os.listdir():
-            #    img, a, matrix = find_transformation(config.default_img, img)
-            #    print(a)
-            #    if a!=1:
-            #        fails+=1
-            #        continue
-            #    cv2.imwrite(f"{id}_affine.png", img)
-            #    np.save(f"{id}_matrix", matrix)
-            #plt.imshow(img)
-            #plt.show()
             hand_metadata = metadata_df.loc[metadata_df["id"] == int(id)]
             age = int(hand_metadata["boneage"])
             gender = hand_metadata["male"].bool()
             gender = int(gender)
             try:
-                segments = self.get_segments(str(id))
-            except:
+                segments = self.get_segments(str(id), img.shape)
+            except Exception as e:
+                print(e)
                 fails +=1
                 continue
 
@@ -99,13 +97,18 @@ class HandFactory(object):
                 fails +=1
                 self.error_info["create_landmarks"].append(str(id))
                 continue
+                
+            # if hand.boneage <= 5*12:
+            #     hand.draw_landmarks()
+            #     hand.show()
+        
             success, feature_name_that_failed = hand.featurize()
             if success:
                 self.add_hand(hand)
             else:
                 fails +=1
                 self.error_info[feature_name_that_failed].append(str(id))
-
+        
         print("Extraction complete")
         print(f"Failed to extract {fails} features out of {len(self.list_hand_files)} files")
         print("Errors encountered in the following files:")
@@ -131,9 +134,10 @@ class HandFactory(object):
                 for feature in config.ALL_FEATURE_NAMES
             }
         )
+        # TODO: this is provably inneficient
         self.features_df = pd.concat(
             [self.features_df, hand_features], ignore_index=True, axis=0
         )
 
-    def get_segments(self, hand_id):
-        return segmentations.get_segmentations(hand_id)
+    def get_segments(self, hand_id, hand_dims):
+        return segmentations.get_segmentations(hand_id, hand_dims)

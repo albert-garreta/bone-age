@@ -1,5 +1,8 @@
 import matplotlib.pyplot as plt
-import config as config
+import sys
+
+sys.path.append("../bone-age")
+import config
 import cv2
 import math
 import os
@@ -13,7 +16,6 @@ from lib.utils import (
     get_inverse_perp_line,
 )
 from lib.hand_utils import get_consecutive_ldk_distances
-import config
 from matplotlib.pyplot import figure
 
 figure(figsize=(12, 8), dpi=80)
@@ -34,6 +36,26 @@ class Hand(object):
         # if the bone does not exist, then there is None in its place
         self.segments = _segments
 
+    def __repr__(self):
+        return f"Hand id {self.id}, age (years) {self.boneage/12}, gender {self.gender}"
+
+    def detect_color_segments(self, segments, color):
+        color_segments = {}
+        colored_img = cv2.imread(
+            os.path.join(config.colored_data_dir, f"{self.id}.png")
+        )
+        # if config.do_affine_transform:
+        #     matrix = np.load(os.path.join(config.affine_matrices_dir, f"{id}_matrix.npy"))
+        #     b, g, r = cv2.split(colored_img)
+        #     b, g, r = apply_warp(b, matrix), apply_warp(g, matrix), apply_warp(r, matrix)
+        #     colored_img = cv2.merge((b, g, r))
+        for segment_id, segment in segments.items():
+            # self.img = segmentations.draw_all_contours(self.img, {0:segment})
+            if segmentations.has_color(colored_img, segment, color):
+                color_segments[segment_id] = segment
+                
+
+        return color_segments
 
     """----------------------------------------------------------------
     Feature creation methods
@@ -59,9 +81,13 @@ class Hand(object):
             except Exception as e:
                 print(f"Exception encountered when creating feature {feature_name}")
                 print(e)
+                print(self)
                 return False, feature_name
         # self.show()
         return True, None
+    
+    def get_id(self):
+        return int(self.id)
 
     def get_boneage(self):
         return self.boneage
@@ -299,9 +325,7 @@ class Hand(object):
         # self.draw_landmarks()
         # segmentations.draw_all_contours(self.img, self.segments)
         # self.show()
-        self.green_segments = segmentations.detect_color_segments(
-            self.id, self.segments, "green"
-        )
+        self.green_segments = self.detect_color_segments(self.segments, "green")
         # segmentations.draw_all_contours(self.img, self.green_segments)
         green_seg_list = list(self.green_segments.values())
         if len(green_seg_list) > 0:
@@ -353,9 +377,7 @@ class Hand(object):
         return carp_bones_sum_perimeters
 
     def get_yellow_sum_perimeters(self):
-        self.yellow_segments = segmentations.detect_color_segments(
-            self.id, self.segments, "yellow"
-        )
+        self.yellow_segments = self.detect_color_segments(self.segments, "yellow")
 
         if len(self.yellow_segments) > 0:
             yellow_sum_perimeters = np.sum(
@@ -373,14 +395,12 @@ class Hand(object):
         return self.carp_bones_sum_perimeters / self.yellow_sum_perimeters
 
     def get_carp_bones_sum_perimeters_ratio(self):
-        return self.carp_bones_sum_perimeters / max(0.5, euclidean_distance(
-            self.landmarks[0], self.landmarks[5]
-        ))
+        return self.carp_bones_sum_perimeters / max(
+            0.5, euclidean_distance(self.landmarks[0], self.landmarks[5])
+        )
 
     def get_max_purple_diameter(self):
-        self.purple_segments = segmentations.detect_color_segments(
-            self.id, self.segments, "purple"
-        )
+        self.purple_segments = self.detect_color_segments(self.segments, "purple")
         if len(self.purple_segments) > 0:
             max_purple_diameter = max(
                 [
@@ -394,19 +414,17 @@ class Hand(object):
         return max_purple_diameter
 
     def get_max_purple_diameter_ratio(self):
-        return self.max_purple_diameter / max(0.5,euclidean_distance(
-            self.landmarks[0], self.landmarks[5]
-        ))
+        return self.max_purple_diameter / max(
+            0.5, euclidean_distance(self.landmarks[0], self.landmarks[5])
+        )
 
     def get_carp_bones_max_diameter_ratio(self):
-        return self.carp_bones_max_diameter / max(0.5, euclidean_distance(
-            self.landmarks[13], self.landmarks[9]
-        ))
+        return self.carp_bones_max_diameter / max(
+            0.5, euclidean_distance(self.landmarks[13], self.landmarks[9])
+        )
 
     def get_epifisis_max_diameter(self):
-        self.red_segments = segmentations.detect_color_segments(
-            self.id, self.segments, "red"
-        )
+        self.red_segments = self.detect_color_segments(self.segments, "red")
         if len(self.red_segments) > 0:
             epifisis_max_diameter = max(
                 [
@@ -420,9 +438,9 @@ class Hand(object):
         return epifisis_max_diameter
 
     def get_epifisis_max_diameter_ratio(self):
-        return self.epifisis_max_diameter / max(0.5,euclidean_distance(
-            self.landmarks[13], self.landmarks[9]
-        ))
+        return self.epifisis_max_diameter / max(
+            0.5, euclidean_distance(self.landmarks[13], self.landmarks[9])
+        )
 
     """----------------------------------------------------------------
     Get google's mediapipe's hand lanmarks methods
@@ -557,7 +575,7 @@ class Hand(object):
         if config.allow_hand_plotting:
             plt.imshow(self.img)
             plt.title(
-                f"Hand id {self.id}"#, boneage {self.boneage}, gender {self.gender}"
+                f"Hand id {self.id}"  # , boneage {self.boneage}, gender {self.gender}"
             )
             plt.show()
         else:

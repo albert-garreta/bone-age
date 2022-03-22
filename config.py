@@ -1,6 +1,7 @@
 """For each of these features, make sure there is a method in the `hand` class
 called `get_<name of feature>`"""
 ALL_FEATURE_NAMES = [
+    "id",
     "boneage",
     "gender",
     "gap_ratio_5",
@@ -68,17 +69,32 @@ FEATURES_FOR_DATA_ANALYSIS = [
     "max_purple_diameter_ratio",
     "epifisis_max_diameter",
     "epifisis_max_diameter_ratio",
-    #"carp_bones_sum_perimeters",
-    #"carp_bones_sum_perimeters_ratio",
-    #"yellow_sum_perimeters",
+    # "carp_bones_sum_perimeters",
+    # "carp_bones_sum_perimeters_ratio",
+    # "yellow_sum_perimeters",
 ]
 
+
+FORBIDDEN_IMGS = [
+    1451,
+    1525,
+    1578,
+    1753,
+    1972,
+    2298,
+    3681,
+    4217,
+    4921,
+    10443,
+    15070,
+]
 
 AGE_BOUNDS = [
-    (12 * (age_center - 1), 12 * (age_center + 1)) for age_center in range(3, 19)
+    (int(12 * (age_center - 2)), int(12 * (age_center + 2)))
+    for age_center in range(3, 19)
 ]
 
-AGE_BOUNDS=[(12*12, 16*12)]
+# AGE_BOUNDS=[(12*12, 16*12)]
 
 hand_img_folder = "./data/boneage-training-dataset"
 colored_data_dir = "./data/data_tagged"

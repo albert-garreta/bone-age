@@ -11,7 +11,13 @@ import matplotlib.pyplot as plt
 import scipy.stats as st
 from datetime import datetime
 
+def remove_forbidden_imgs(df):
+    #TODO: improve?
+    for forb_img in config.FORBIDDEN_IMGS:
+        df = df.loc[df["id"]!=forb_img]
+    return df
 def main_train_test_fun(df):
+
     df = shuffle(df).reset_index(drop=True)
     training_data_size = int(len(df) * config.training_sample_size_ratio)
 
@@ -60,6 +66,9 @@ def main():
     df = pd.read_csv(config.features_df_path).iloc[
         :, 1:
     ]  # remove Unnamed: 0 -- how to abvoid having it in the first place?
+    print(df)
+    df = remove_forbidden_imgs(df)
+    df = df.drop(columns=["id"])
     df = df[config.FEATURES_FOR_DATA_ANALYSIS]
     print(df.corr())
     print(df.head())
@@ -76,7 +85,7 @@ def main():
         losses_std = []
         losses_mean = []
         num_samples_for_range = 0
-        for gender in [0, 1]:
+        for gender in [0,1]:
             print(age_bounds, gender)
             df_restricted = process_data_by_gender_and_age_bounds(df, gender, age_bounds)
             num_samples_for_range += len(df_restricted)
@@ -91,7 +100,8 @@ def main():
         all_losses_mean.append(round(np.mean(losses_mean),3))
         all_losses_std.append(round(np.mean(losses_std),3))
         all_num_samples_for_range.append(num_samples_for_range)
-    df_results = pd.DataFrame({"age_bounds (years)": config.AGE_BOUNDS, "Std age disparity (months)": all_losses_std, "Mean error": all_losses_mean, "Num samples": all_num_samples_for_range})
+    age_bounds_in_years = [(x[0]/12, x[1]/12) for x in config.AGE_BOUNDS]
+    df_results = pd.DataFrame({"age_bounds (years)": age_bounds_in_years, "Std age disparity (months)": all_losses_std, "Mean error": all_losses_mean, "Num samples": all_num_samples_for_range})
     print(df_results)
     df_results.to_csv("./logs/test_results.csv")  
     msg = f"{df_results}"
