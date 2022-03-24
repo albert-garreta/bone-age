@@ -19,7 +19,6 @@ from lib.hand_utils import get_consecutive_ldk_distances
 from matplotlib.pyplot import figure
 
 figure(figsize=(12, 8), dpi=80)
-
 mp_hands = mp.solutions.hands.Hands()
 mp_draw = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
@@ -516,14 +515,14 @@ class Hand(object):
             mp_drawing_styles.get_default_hand_landmarks_style(),
             mp_drawing_styles.get_default_hand_connections_style(),
         )
-        # for ldk_id, ldk in enumerate(self.landmarks):
-        #     print(ldk)
-        #     cv2.putText(
-        #         self.img,
-        #         str(ldk_id),
-        #         (ldk[0], ldk[1]),
-        #        cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 0, 255), 1
-        #     )
+        for ldk_id, ldk in self.landmarks.items():
+            #print(ldk)
+            cv2.putText(
+                self.img,
+                str(ldk_id),
+                (ldk[0], ldk[1]),
+            cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 0, 255), 1
+            )
 
     """----------------------------------------------------------------
     Organize segmentations

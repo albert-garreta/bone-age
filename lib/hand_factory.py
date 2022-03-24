@@ -12,6 +12,8 @@ from lib.hand import Hand
 import config
 import segmentations as segmentations
 from affine_transf import find_transformation
+import gc
+
 
 def get_id_from_file_name(_file_name):
     # _file_name = [img_id].png
@@ -108,7 +110,8 @@ class HandFactory(object):
             else:
                 fails +=1
                 self.error_info[feature_name_that_failed].append(str(id))
-        
+            gc.collect()
+            
         print("Extraction complete")
         print(f"Failed to extract {fails} features out of {len(self.list_hand_files)} files")
         print("Errors encountered in the following files:")

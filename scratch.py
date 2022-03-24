@@ -19,7 +19,7 @@ if __name__ == "__main__":
         if f"{id}.json" in json_list:
             hand_metadata = metadata_df.loc[metadata_df["id"] == int(id)]
             age = int(hand_metadata["boneage"])
-            if age <= 8 * 12:
+            if age <= 20 * 12:
                 print(age / 12)
                 img_file = os.path.join("./data/boneage-training-dataset", hand_file)
                 img = cv2.imread(img_file)
