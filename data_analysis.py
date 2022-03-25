@@ -12,6 +12,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 import scipy.stats as st
 from datetime import datetime
+from sklearn.metrics import r2_score
 
 
 def remove_forbidden_imgs(df):
@@ -21,10 +22,30 @@ def remove_forbidden_imgs(df):
     return df
 
 
+def cut_out_outlier_samples(df, feature, min=None, max=None):
+    if feature not in df.columns:
+        return df
+    if min is not None:
+        df = df.loc[df[feature] > min]
+    if max is not None:
+        df = df.loc[df[feature] < max]
+    return df
+
+
+def replace_outlier_samples(df, feature, min=None, max=None):
+    if feature not in df.columns:
+        return df
+    if min is not None:
+        df.loc[df[feature] > min, feature] = np.mean(df.loc[df[feature] > min, feature])
+    if max is not None:
+        df.loc[df[feature] < max, feature] = np.mean(df.loc[df[feature] < max, feature])
+    return df
+
+
 def remove_outlier_samples(df):
     # TODO: do it without a for?
     for feature in [
-        x for x in config.FEATURES_FOR_DATA_ANALYSIS if x not in ["boneage", "gender"]
+        x for x in config.FEATURES_FOR_DATA_ANALYSIS if x not in ["id","boneage", "gender"]
     ]:
         # print(df[feature].quantile(0.95))
         df = df[df[feature] < df[feature].quantile(config.quartile_remove_outliers)]
@@ -32,56 +53,64 @@ def remove_outlier_samples(df):
         # assert False
     return df
 
-
-def main_train_test_fun(df):
-
+def prepare_and_split_train_test(df):
+    
     df = shuffle(df).reset_index(drop=True)
     df = remove_outlier_samples(df)
 
+    df = cut_out_outlier_samples(df, "max_purple_diameter", 0, 195)
+    # df = cut_out_outlier_samples(df, "max_purple_diameter", None, 0.1)
+    df = cut_out_outlier_samples(df, "epifisis_max_diameter_ratio", 0, None)
+    # df = cut_out_outlier_samples(df, "epifisis_max_diameter_ratio", None, 0.001)
+
+    df = cut_out_outlier_samples(df, "carp_bones_max_diameter_ratio", 0, None)
+    df = cut_out_outlier_samples(df, "gap_ratio_5", None, 0.05)
+    df = cut_out_outlier_samples(df, "gap_ratio_13", None, 0.13)
+    df = cut_out_outlier_samples(df, "gap_ratio_9", None, 0.1)
+    
+    df = df[config.FEATURES_FOR_DATA_ANALYSIS]
+
     training_data_size = int(len(df) * config.training_sample_size_ratio)
 
-    df = df[config.FEATURES_FOR_DATA_ANALYSIS]
-    
-    #df["boneage"] = np.log(df["boneage"])
-    
-    df = df.loc[df["max_purple_diameter"]>0]
-    df = df.loc[df["gap_ratio_5"]<0.05]
-    df = df.loc[df["carp_bones_max_diameter_ratio"]>0]
-        
     df_train = df.iloc[:training_data_size]
     df_test = df.iloc[training_data_size:]
+    # print(df_train.shape, df_test.shape)
     if len(df_train) == 0 or len(df_test) == 0:
         return None, None
     df_test.index = range(len(df_test))
-    
+
     target_train = df_train["boneage"]
     target_test = df_test["boneage"]
     df_train = df_train.drop("boneage", axis=1)
     df_test = df_test.drop("boneage", axis=1)
-   # df_train = df_train.drop("gender", axis=1)
-   # df_test = df_test.drop("gender", axis=1)
+    # df_train = df_train.drop("gender", axis=1)
+    # df_test = df_test.drop("gender", axis=1)
+    return df_train, target_train, df_test, target_test
     
-    #print(df_train.head())
+def main_train_test_fun(df_train, target_train, df_test, target_test):
+
+
+    # print(df_train.head())
     final_train_columns = df_train.columns
     reg = linear_model.LinearRegression()
     scaler = StandardScaler()
-    
+
     if config.standardize:
         df_train = scaler.fit_transform(df_train)
     reg = reg.fit(df_train, target_train)
-    
-    feature_scores = SelectKBest(score_func=f_regression, k='all')
-    #feature_scores.fit(df_train, target_train)
-    
+
+    feature_scores = SelectKBest(score_func=f_regression, k="all")
+    # feature_scores.fit(df_train, target_train)
 
     if config.standardize:
         df_test = scaler.transform(df_test)
     preds = reg.predict(df_test)
-    #preds = np.exp(preds)
-    #target_test = np.exp(target_test)
-    #print(reg.coef_)
+    # preds = np.exp(preds)
+    # target_test = np.exp(target_test)
+    # print(reg.coef_)
     disparity = preds - target_test
-    return disparity, None#, feature_scores.scores_
+    r2 = r2_score(target_test, preds)
+    return disparity, r2
 
 
 def process_data_by_gender_and_age_bounds(df, gender, age_bounds):
@@ -91,7 +120,7 @@ def process_data_by_gender_and_age_bounds(df, gender, age_bounds):
         df_restricted = df_restricted.loc[df_restricted["boneage"] >= age_bounds[0]]
         training_data_size = int(len(df_restricted) * config.training_sample_size_ratio)
         test_data_size = len(df_restricted) - training_data_size
-        print("Size training and test data:", training_data_size, test_data_size)
+        #print("Size training and test data:", training_data_size, test_data_size)
         return df_restricted
     except Exception as e:
         # raise Exception
@@ -99,16 +128,15 @@ def process_data_by_gender_and_age_bounds(df, gender, age_bounds):
         return None
 
 
-def main():
+def main(config):
     df = pd.read_csv(config.features_df_path).iloc[
         :, 1:
     ]  # remove Unnamed: 0 -- how to abvoid having it in the first place?
-    print(df)
+    #print(df)
     df = remove_forbidden_imgs(df)
     df = df.drop(columns=["id"])
-    df = df[config.FEATURES_FOR_DATA_ANALYSIS]
-    print(df.corr())
-    print(df.head())
+    #print(df.corr())
+    #print(df.head())
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df = df.dropna()
 
@@ -119,31 +147,39 @@ def main():
     all_losses_mean = []
     all_num_samples_for_range = []
     all_max_errors = []
+    all_r2s = []
     for age_bounds in config.AGE_BOUNDS:
         losses_std = []
         losses_mean = []
         max_errors = []
+        r2s = []
         num_samples_for_range = 0
         for gender in [0, 1]:
-            print(age_bounds, gender)
+            #print(age_bounds, gender)
             df_restricted = process_data_by_gender_and_age_bounds(
                 df, gender, age_bounds
             )
             # print(df_restricted)
-            num_samples_for_range += len(df_restricted)
+            df_train, target_train, df_test, target_test = prepare_and_split_train_test(df_restricted)
+            num_samples_for_range += len(df_train)
             if num_samples_for_range > 10:
-                for _ in tqdm(range(100)):
-                    disparity, feat_scores = main_train_test_fun(df_restricted)
+                for _ in range(500):
+                    disparity, r2 = main_train_test_fun(df_train, target_train, df_test, target_test)
                     disparity = pd.Series(disparity)
-                    disparity = disparity[disparity< np.mean(disparity) + config.max_std_in_losses*np.std(disparity)]
+                    disparity = disparity[
+                        disparity
+                        < np.mean(disparity)
+                        + config.max_std_in_losses * np.std(disparity)
+                    ]
                     loss = pd.Series(abs(disparity))
                     losses_std.append(np.std(loss))
                     losses_mean.append(np.mean(loss))
                     max_errors.append(np.max(disparity))
-                    #pd.Series(disparity).hist()
-                    #plt.show()
-            #for idx, col in enumerate([x for x in config.FEATURES_FOR_DATA_ANALYSIS if x not in ["boneage", "gender"]]):
-                #print(col,feat_scores[idx])
+                    r2s.append(r2)
+                    # pd.Series(disparity).hist()
+                    # plt.show()
+            # for idx, col in enumerate([x for x in config.FEATURES_FOR_DATA_ANALYSIS if x not in ["boneage", "gender"]]):
+            # print(col,feat_scores[idx])
 
         msg = f"Age bounds {age_bounds[0]/12} <= age (years) <= {age_bounds[1]/12}\n    Std of age disparity: {round(np.mean(losses_std),3)} (months). Mean absolute error: {round(np.mean(losses_mean),3)}. Num samples for range: {num_samples_for_range}\n"
         # with open("./logs/test.log", "a") as f:
@@ -151,7 +187,8 @@ def main():
         all_losses_mean.append(round(np.mean(losses_mean), 3))
         all_losses_std.append(round(np.mean(losses_std), 3))
         all_num_samples_for_range.append(num_samples_for_range)
-        all_max_errors.append(np.round(np.mean(max_errors),3))
+        all_max_errors.append(np.round(np.mean(max_errors), 3))
+        all_r2s.append(np.mean(r2s))
 
     age_bounds_in_years = [(x[0] / 12, x[1] / 12) for x in config.AGE_BOUNDS]
     df_results = pd.DataFrame(
@@ -160,7 +197,8 @@ def main():
             "Std age disparity (months)": all_losses_std,
             "Mean error": all_losses_mean,
             "Max disparity": all_max_errors,
-            "Num samples": all_num_samples_for_range,
+            "R^2 score": all_r2s,
+            "Num samples trained on": all_num_samples_for_range,
         }
     )
     print(df_results)
@@ -171,4 +209,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    print("ALL FEATURES")
+    main(config)
+    
+    if True:
+        
+        for feat in [x for x in config.ALL_FEATURE_NAMES if x not in ["id", "boneage", "gender"]]:
+            print(f"\n\nFEATURE {feat}\n")
+            config.FEATURES_FOR_DATA_ANALYSIS = [ "boneage", "gender", feat]
+            main(config)

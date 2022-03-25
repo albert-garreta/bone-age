@@ -82,10 +82,12 @@ FEATURES_FOR_DATA_ANALYSIS = [
     "boneage",
     "gender",
     "max_purple_diameter", # log
-   # "epifisis_max_diameter_ratio", # log, but some older people have 0 epifisis-> bad
+   "epifisis_max_diameter_ratio", # log, but some older people have 0 epifisis-> bad
     "carp_bones_max_diameter_ratio", # log (some older boneages are 0 in this feat)
     "gap_ratio_17",
     "gap_ratio_5",
+    "gap_ratio_13",
+    "gap_ratio_9"
 #     "gap_ratio_18",
 #     "gap_ratio_10",
 #     "carp_bones_max_diameter",
@@ -97,6 +99,32 @@ FEATURES_FOR_DATA_ANALYSIS = [
 #  "carp_bones_sum_perimeters_ratio",
 #  "yellow_sum_perimeters",
 ]
+
+
+FEATURES_FOR_DATA_ANALYSIS = [
+    "boneage",
+    "gender",
+    "max_purple_diameter", # log
+   "epifisis_max_diameter_ratio", # log, but some older people have 0 epifisis-> bad
+    "carp_bones_max_diameter_ratio", # log (some older boneages are 0 in this feat)
+    "gap_ratio_17",
+    "gap_ratio_5",
+    "gap_ratio_13",
+    "gap_ratio_9",
+#     "gap_ratio_18",
+#     "gap_ratio_10",
+#     "carp_bones_max_diameter",
+#     "gap_5",
+#     "gap_17",
+#     "carp_bones_max_distances",
+#     "epifisis_max_diameter",
+#  "carp_bones_sum_perime`ters",
+#  "carp_bones_sum_perimeters_ratio",
+#  "yellow_sum_perimeters",
+]
+
+
+
 
 
 LOG_FEATS = ["max_purple_diameter", "carp_bones_max_diameter_ratio"]
@@ -113,9 +141,9 @@ LOG_FEATS = ["max_purple_diameter", "carp_bones_max_diameter_ratio"]
 AGE_BOUNDS = [
     (int(12 * (age_center - 4)), int(12 * (age_center + 4)))
     for age_center in [4, 8, 12, 16]
-] + [(0, 20 * 12)]
+] 
 
-# AGE_BOUNDS=[(12*12, 16*12)]
+AGE_BOUNDS+=[(0, 20 * 12)]
 
 hand_img_folder = "./data/boneage-training-dataset"
 colored_data_dir = "./data/data_tagged"
@@ -125,7 +153,7 @@ segmented_hand_img_folder = "./data/jsons"
 hand_metadata_folder = "./data/boneage-training-dataset.csv"
 batch_size = 1100
 features_df_path = "./data/features_df.csv"
-training_sample_size_ratio = 0.8
+training_sample_size_ratio = 0.75
 annotate_imgs = False
 shuffle_data = True
 allow_hand_plotting = True
@@ -290,5 +318,8 @@ FORBIDDEN_IMGS = [
     14206,
     14822,
     14930,
+    1430,
+    1714,
+    1738,
 ]
 #FORBIDDEN_IMGS = []

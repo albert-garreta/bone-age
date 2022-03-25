@@ -31,8 +31,8 @@ def get_segmentations(id, hand_dimensions) -> dict:
         region_idx: [
             (
                 # WARNING: sometimes the points are out of the image by one pixel
-                max(0, min(hand_x_dim, regions[region_idx]["shape_attributes"]["all_points_x"][point_idx])),
-                max(0, min(hand_y_dim, regions[region_idx]["shape_attributes"]["all_points_y"][point_idx])),
+                max(0, min(hand_y_dim, regions[region_idx]["shape_attributes"]["all_points_x"][point_idx])),
+                max(0, min(hand_x_dim, regions[region_idx]["shape_attributes"]["all_points_y"][point_idx])),
             )
             for point_idx in range(
                 len(regions[region_idx]["shape_attributes"]["all_points_x"])
@@ -43,39 +43,40 @@ def get_segmentations(id, hand_dimensions) -> dict:
     return segmentations
 
 
-def _draw_point(img, point):
+def _draw_point(img, point, color):
     return cv2.circle(
         img,
         (int(point[0]), int(point[1])),
         radius=0,
-        color=(0, 255, 0),
+        color=color,
         thickness=3,
     )
 
 
-def _draw_contour(img, list_of_points, bone_num=""):
-    center_x = int(np.mean([p[0] for p in list_of_points]))
-    center_y = int(np.mean([p[1] for p in list_of_points]))
-    fontScale = 3
-    fontFace = cv2.FONT_HERSHEY_PLAIN
-    fontColor = (0, 255, 255)
-    fontThickness = 2
-    cv2.putText(
-        img,
-        bone_num,
-        (center_x, center_y),
-        fontFace,
-        fontScale,
-        fontColor,
-        fontThickness,
-        cv2.LINE_AA,
-    )
+def _draw_contour(img, list_of_points, text=None, color=None):
+    if text is not None:
+        center_x = int(np.mean([p[0] for p in list_of_points]))
+        center_y = int(np.mean([p[1] for p in list_of_points]))
+        fontScale = 3
+        fontFace = cv2.FONT_HERSHEY_PLAIN
+        fontColor = (0, 255, 255)
+        fontThickness = 2
+        cv2.putText(
+            img,
+            text,
+            (center_x, center_y),
+            fontFace,
+            fontScale,
+            fontColor,
+            fontThickness,
+            cv2.LINE_AA,
+        )
     for point in list_of_points:
-        img = _draw_point(img, point)
+        img = _draw_point(img, point, color)
     return img
 
 
-def draw_all_contours(img, segmentations, order=None):
+def draw_all_contours(img, segmentations, order=None, color=None, text=False):
     segmentations = (
         segmentations
         if order is None
@@ -83,7 +84,8 @@ def draw_all_contours(img, segmentations, order=None):
     )
     for idx, contour in segmentations.items():
         #print(idx)
-        img = _draw_contour(img, contour, str(idx))
+        text = str(idx) if text else None
+        img = _draw_contour(img, contour, text, color)
     return img
 
 
@@ -113,8 +115,8 @@ def get_perimeter(list_of_points):
 BGR_color_bounds = {
     "yellow": {"lower": (0, 170, 170), "upper": (50, 255, 255)},
     "green": {"lower": (115, 185, 115), "upper": (170, 255, 185)},
-    "red": {"lower": (0, 0, 180), "upper": (100, 100, 255)},
-    "purple": {"lower": (140, 0, 140), "upper": (210, 75, 205)},
+    "red": {"lower": (0, 0, 120), "upper": (120, 120, 255)},
+    "purple": {"lower": (120, 0, 120), "upper": (255, 120, 255)},
     "cyan": {"lower": (200, 185, 0), "upper": (255, 255, 65)},
 }
 

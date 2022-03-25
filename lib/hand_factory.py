@@ -74,7 +74,6 @@ class HandFactory(object):
             print(f"Processing  {hand_file}")
 
             id = get_id_from_file_name(hand_file)
-            hand_file = hand_file if not config.do_affine_transform else hand_file.split(".")[0] + "_affine.png"
             img_file = os.path.join(self.hand_images_directory, hand_file)
             img = cv2.imread(img_file)
             if img is None:
@@ -99,14 +98,11 @@ class HandFactory(object):
                 fails +=1
                 self.error_info["create_landmarks"].append(str(id))
                 continue
-                
-            # if hand.boneage <= 5*12:
-            #     hand.draw_landmarks()
-            #     hand.show()
-        
+
             success, feature_name_that_failed = hand.featurize()
             if success:
-                self.add_hand(hand)
+                cv2.imwrite(f"./data/drawings_features/{id}.png", hand.img)
+                self.add_hand_to_df(hand)
             else:
                 fails +=1
                 self.error_info[feature_name_that_failed].append(str(id))

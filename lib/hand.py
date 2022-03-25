@@ -23,7 +23,7 @@ mp_hands = mp.solutions.hands.Hands()
 mp_draw = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 
-
+COLOR_TO_BGR = {"green": (0,255,0), "blue":(255,0,0), "red":(0,0,255), "cyan":(255, 255, 0), "purple":(255,0,255), "yellow":(0,255,255)}
 class Hand(object):
     def __init__(self, _image, _boneage, _gender, _id, _segments):
 
@@ -43,17 +43,10 @@ class Hand(object):
         colored_img = cv2.imread(
             os.path.join(config.colored_data_dir, f"{self.id}.png")
         )
-        # if config.do_affine_transform:
-        #     matrix = np.load(os.path.join(config.affine_matrices_dir, f"{id}_matrix.npy"))
-        #     b, g, r = cv2.split(colored_img)
-        #     b, g, r = apply_warp(b, matrix), apply_warp(g, matrix), apply_warp(r, matrix)
-        #     colored_img = cv2.merge((b, g, r))
         for segment_id, segment in segments.items():
-            # self.img = segmentations.draw_all_contours(self.img, {0:segment})
             if segmentations.has_color(colored_img, segment, color):
                 color_segments[segment_id] = segment
-                
-
+        self.img = segmentations.draw_all_contours(self.img, color_segments, color=COLOR_TO_BGR[color])
         return color_segments
 
     """----------------------------------------------------------------
@@ -74,7 +67,6 @@ class Hand(object):
         """
         for feature_name in config.ALL_FEATURE_NAMES:
             try:
-                # print(feature_name)
                 feature_value = eval(f"self.get_{feature_name}()")
                 setattr(self, feature_name, feature_value)
             except Exception as e:
@@ -82,7 +74,6 @@ class Hand(object):
                 print(e)
                 print(self)
                 return False, feature_name
-        # self.show()
         return True, None
     
     def get_id(self):
@@ -229,20 +220,6 @@ class Hand(object):
         if constraints is None:
             valid_segments = self.segments
         else:
-            inverse_perp_line_p0_ldk = get_inverse_perp_line(point, constraints[0])
-            inverse_perp_line_p1_ldk = get_inverse_perp_line(point, constraints[1])
-
-            # if inverse_perp_line_p0_ldk and inverse_perp_line_p1_ldk:
-            #     points0 = [(inverse_perp_line_p0_ldk(y), y) for y in range(0,self.img.shape[0], 10)]
-            #     points1 = [(inverse_perp_line_p1_ldk(y), y) for y in range(0,self.img.shape[0], 10)]
-            #
-            #     segmentations.draw_all_contours(self.img, {0:points0, 1:points1})
-            #
-            #     annotate_img(self.img, point, "lk")
-            #     print(constraints[0][0], constraints[0][1])
-            #     annotate_img(self.img, (int(constraints[0][0]), int(constraints[0][1])), ".")
-            #     annotate_img(self.img, (int(constraints[1][0]), int(constraints[1][1])), ".")
-            #
             for seg_id, segment in self.segments.items():
                 # WARNING: !!! fist compoment corresponds to the y-axis of an array!!
 
@@ -307,7 +284,7 @@ class Hand(object):
 
         annotate_img(self.img, point, "A")
         segmentations.draw_all_contours(
-            self.img, {1: closest_segment1, 2: closest_segment2}
+            self.img, {1: closest_segment1, 2: closest_segment2}, color=(255, 255, 0), text=True
         )
 
         gap_length = segmentations.get_distance_between_contours(
@@ -319,13 +296,11 @@ class Hand(object):
     def get_min_y_coord(list_of_points):  #
         return [p[1] for p in list_of_points]
 
+    def get_distance_to_ratio_by(self):
+        return self._get_consecutive_ldk_distances([0, 5, 6, 7, 8])
+
     def get_carp_bones_max_distances(self):
-        # print(self.id)
-        # self.draw_landmarks()
-        # segmentations.draw_all_contours(self.img, self.segments)
-        # self.show()
         self.green_segments = self.detect_color_segments(self.segments, "green")
-        # segmentations.draw_all_contours(self.img, self.green_segments)
         green_seg_list = list(self.green_segments.values())
         if len(green_seg_list) > 0:
             green_seg_pair_list = [
@@ -345,9 +320,10 @@ class Hand(object):
         return carp_bones_max_distances
 
     def get_carp_bones_max_distances_ratio(self):
-        return self.carp_bones_max_distances / euclidean_distance(
-            self.landmarks[13], self.landmarks[9]
-        )
+        return self.carp_bones_max_distances / self.get_distance_to_ratio_by() 
+    #euclidean_distance(
+    #        self.landmarks[13], self.landmarks[9]
+    #    )
 
     def get_carp_bones_max_diameter(self):
         if len(self.green_segments) > 0:
@@ -394,12 +370,14 @@ class Hand(object):
         return self.carp_bones_sum_perimeters / self.yellow_sum_perimeters
 
     def get_carp_bones_sum_perimeters_ratio(self):
-        return self.carp_bones_sum_perimeters / max(
-            0.5, euclidean_distance(self.landmarks[0], self.landmarks[5])
-        )
+        return self.carp_bones_sum_perimeters / self.get_distance_to_ratio_by() 
+    #max(
+    #        0.5, euclidean_distance(self.landmarks[0], self.landmarks[5])
+    #    )
 
     def get_max_purple_diameter(self):
         self.purple_segments = self.detect_color_segments(self.segments, "purple")
+
         if len(self.purple_segments) > 0:
             max_purple_diameter = max(
                 [
@@ -413,17 +391,20 @@ class Hand(object):
         return max_purple_diameter
 
     def get_max_purple_diameter_ratio(self):
-        return self.max_purple_diameter / max(
-            0.5, euclidean_distance(self.landmarks[0], self.landmarks[5])
-        )
+        return self.max_purple_diameter / self.get_distance_to_ratio_by() 
+    #max(
+    #        0.5, euclidean_distance(self.landmarks[0], self.landmarks[5])
+    #    )
 
     def get_carp_bones_max_diameter_ratio(self):
-        return self.carp_bones_max_diameter / max(
-            0.5, euclidean_distance(self.landmarks[13], self.landmarks[9])
-        )
+        return self.carp_bones_max_diameter / self.get_distance_to_ratio_by() 
+    #max(
+    #        0.5, euclidean_distance(self.landmarks[13], self.landmarks[9])
+    #    )
 
     def get_epifisis_max_diameter(self):
         self.red_segments = self.detect_color_segments(self.segments, "red")
+
         if len(self.red_segments) > 0:
             epifisis_max_diameter = max(
                 [
@@ -437,9 +418,10 @@ class Hand(object):
         return epifisis_max_diameter
 
     def get_epifisis_max_diameter_ratio(self):
-        return self.epifisis_max_diameter / max(
-            0.5, euclidean_distance(self.landmarks[13], self.landmarks[9])
-        )
+        return self.epifisis_max_diameter / self.get_distance_to_ratio_by() 
+    # max(
+    #         0.5, euclidean_distance(self.landmarks[13], self.landmarks[9])
+    #     )
 
     """----------------------------------------------------------------
     Get google's mediapipe's hand lanmarks methods
