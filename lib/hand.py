@@ -23,7 +23,16 @@ mp_hands = mp.solutions.hands.Hands()
 mp_draw = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 
-COLOR_TO_BGR = {"green": (0,255,0), "blue":(255,0,0), "red":(0,0,255), "cyan":(255, 255, 0), "purple":(255,0,255), "yellow":(0,255,255)}
+COLOR_TO_BGR = {
+    "green": (0, 255, 0),
+    "blue": (255, 0, 0),
+    "red": (0, 0, 255),
+    "cyan": (255, 255, 0),
+    "purple": (255, 0, 255),
+    "yellow": (0, 255, 255),
+}
+
+
 class Hand(object):
     def __init__(self, _image, _boneage, _gender, _id, _segments):
 
@@ -31,23 +40,11 @@ class Hand(object):
         self.boneage = _boneage
         self.gender = _gender
         self.id = _id
-        # list of 47 contours (contour = list of points) for each bone
-        # if the bone does not exist, then there is None in its place
+        # list of contours (contour = segment=  list of points)
         self.segments = _segments
 
     def __repr__(self):
         return f"Hand id {self.id}, age (years) {self.boneage/12}, gender {self.gender}"
-
-    def detect_color_segments(self, segments, color):
-        color_segments = {}
-        colored_img = cv2.imread(
-            os.path.join(config.colored_data_dir, f"{self.id}.png")
-        )
-        for segment_id, segment in segments.items():
-            if segmentations.has_color(colored_img, segment, color):
-                color_segments[segment_id] = segment
-        self.img = segmentations.draw_all_contours(self.img, color_segments, color=COLOR_TO_BGR[color])
-        return color_segments
 
     """----------------------------------------------------------------
     Feature creation methods
@@ -75,7 +72,7 @@ class Hand(object):
                 print(self)
                 return False, feature_name
         return True, None
-    
+
     def get_id(self):
         return int(self.id)
 
@@ -85,127 +82,93 @@ class Hand(object):
     def get_gender(self):
         return self.gender
 
-    def get_gap_ratio_9(self):
-        distance = self.get_gap_9()
-        vertical_length = self._get_consecutive_ldk_distances([0, 9, 10, 11, 12])
+    def gep_gap_ratio(self, landmark_num):
+        """landmark_num = google's mediapipe landmark where the gap between bones is measured"""
+        distance = self.get_gap(landmark_num)
+        if landmark_num == 9:
+            landmarks_for_calc_vertical_length = [0, 9, 10, 11, 12]
+        if landmark_num == 5:
+            landmarks_for_calc_vertical_length = [0, 5, 6, 7, 8]
+        if landmark_num == 13:
+            landmarks_for_calc_vertical_length = [0, 13, 14, 15, 16]
+        if landmark_num == 17:
+            landmarks_for_calc_vertical_length = [0, 17, 18, 19, 20]
+        if landmark_num == 10:
+            landmarks_for_calc_vertical_length = [0, 9, 10, 11, 12]
+        if landmark_num == 6:
+            landmarks_for_calc_vertical_length = [0, 5, 6, 7, 8]
+        if landmark_num == 14:
+            landmarks_for_calc_vertical_length = [0, 13, 14, 15, 16]
+        if landmark_num == 18:
+            landmarks_for_calc_vertical_length = [0, 17, 18, 19, 20]
+        vertical_length = get_consecutive_ldk_distances(
+            landmarks_for_calc_vertical_length
+        )
         return distance / max(0.1, vertical_length)
 
-    def get_gap_ratio_5(self):
-        distance = self.get_gap_5()
-        vertical_length = self._get_consecutive_ldk_distances([0, 5, 6, 7, 8])
-        return distance / max(0.1, vertical_length)
+    def get_gap(self, landmark_num):
+        """landmark_num = google's mediapipe landmark where the gap between bones is measured"""
+        constraints = [
+            self.get_point_in_between(self.landmarks[9], self.landmarks[13]),
+            self.get_point_in_between(self.landmarks[9], self.landmarks[5]),
+        ]
+        return self._get_dist_to_point_of_centroid_closest_two_segments(
+            self.landmarks[landmark_num], constraints
+        )
 
-    def get_gap_ratio_13(self):
-        distance = self.get_gap_13()
-        vertical_length = self._get_consecutive_ldk_distances([0, 13, 14, 15, 16])
-        return distance / max(0.1, vertical_length)
-
-    def get_gap_ratio_17(self):
-        distance = self.get_gap_17()
-        vertical_length = self._get_consecutive_ldk_distances([0, 17, 18, 19, 20])
-        return distance / max(0.1, vertical_length)
-
-    def get_gap_ratio_10(self):
-        distance = self.get_gap_10()
-        vertical_length = self._get_consecutive_ldk_distances([0, 9, 10, 11, 12])
-        return distance / max(0.1, vertical_length)
-
-    def get_gap_ratio_6(self):
-        distance = self.get_gap_6()
-        vertical_length = self._get_consecutive_ldk_distances([0, 5, 6, 7, 8])
-        return distance / max(0.1, vertical_length)
-
-    def get_gap_ratio_14(self):
-        distance = self.get_gap_14()
-        vertical_length = self._get_consecutive_ldk_distances([0, 13, 14, 15, 16])
-        return distance / max(0.1, vertical_length)
-
-    def get_gap_ratio_18(self):
-        distance = self.get_gap_18()
-        vertical_length = self._get_consecutive_ldk_distances([0, 17, 18, 19, 20])
-        return distance / max(0.1, vertical_length)
+    def get_constraints_for_calculaiton_of_gaps(self, landmark_num):
+        if landmark_num == 9:
+            constraints = [
+                self.get_point_in_between(self.landmarks[9], self.landmarks[13]),
+                self.get_point_in_between(self.landmarks[9], self.landmarks[5]),
+            ]
+        elif landmark_num == 5:
+            constraints = [
+                self.get_point_in_between(self.landmarks[5], self.landmarks[9]),
+                None,
+            ]
+        elif landmark_num == 13:
+            constraints = [
+                self.get_point_in_between(self.landmarks[13], self.landmarks[17]),
+                self.get_point_in_between(self.landmarks[13], self.landmarks[9]),
+            ]
+        elif landmark_num == 17:
+            constraints = [
+                None,
+                self.get_point_in_between(self.landmarks[17], self.landmarks[13]),
+            ]
+        elif landmark_num == 6:
+            constraints = [
+                self.get_point_in_between(self.landmarks[6], self.landmarks[10]),
+                None,
+            ]
+        elif landmark_num == 10:
+            constraints = [
+                self.get_point_in_between(self.landmarks[10], self.landmarks[14]),
+                self.get_point_in_between(self.landmarks[10], self.landmarks[6]),
+            ]
+        elif landmark_num == 14:
+            constraints = [
+                self.get_point_in_between(self.landmarks[14], self.landmarks[18]),
+                self.get_point_in_between(self.landmarks[14], self.landmarks[10]),
+            ]
+        elif landmark_num == 18:
+            constraints = [
+                None,
+                self.get_point_in_between(self.landmarks[18], self.landmarks[14]),
+            ]
+        else:
+            raise Exception(
+                f"Computing `gap_{landmark_num}`: landmark number is not supported"
+            )
+        return constraints
 
     @staticmethod
-    def sum_div_2_points(point1, point2, k=0.2):
+    def get_point_in_between(point1, point2, k=0.2):
         return (
             (k * point1[0] + (1 - k) * point2[0]),
             (k * point1[1] + (1 - k) * point2[1]),
         )
-
-    def get_gap_9(self):
-        constraints = [
-            self.sum_div_2_points(self.landmarks[9], self.landmarks[13]),
-            self.sum_div_2_points(self.landmarks[9], self.landmarks[5]),
-        ]
-        return self._get_dist_to_point_of_centroid_closest_two_segments(
-            self.landmarks[9], constraints
-        )
-
-    def get_gap_5(self):
-        constraints = [
-            self.sum_div_2_points(self.landmarks[5], self.landmarks[9]),
-            None,
-        ]
-        return self._get_dist_to_point_of_centroid_closest_two_segments(
-            self.landmarks[5], constraints
-        )
-
-    def get_gap_13(self):
-        constraints = [
-            self.sum_div_2_points(self.landmarks[13], self.landmarks[17]),
-            self.sum_div_2_points(self.landmarks[13], self.landmarks[9]),
-        ]
-        return self._get_dist_to_point_of_centroid_closest_two_segments(
-            self.landmarks[13], constraints
-        )
-
-    def get_gap_17(self):
-        constraints = [
-            None,
-            self.sum_div_2_points(self.landmarks[17], self.landmarks[13]),
-        ]
-        return self._get_dist_to_point_of_centroid_closest_two_segments(
-            self.landmarks[17], constraints
-        )
-
-    def get_gap_6(self):
-        constraints = [
-            self.sum_div_2_points(self.landmarks[6], self.landmarks[10]),
-            None,
-        ]
-        return self._get_dist_to_point_of_centroid_closest_two_segments(
-            self.landmarks[6], constraints
-        )
-
-    def get_gap_10(self):
-        constraints = [
-            self.sum_div_2_points(self.landmarks[10], self.landmarks[14]),
-            self.sum_div_2_points(self.landmarks[10], self.landmarks[6]),
-        ]
-        return self._get_dist_to_point_of_centroid_closest_two_segments(
-            self.landmarks[10], constraints
-        )
-
-    def get_gap_14(self):
-        constraints = [
-            self.sum_div_2_points(self.landmarks[14], self.landmarks[18]),
-            self.sum_div_2_points(self.landmarks[14], self.landmarks[10]),
-        ]
-        return self._get_dist_to_point_of_centroid_closest_two_segments(
-            self.landmarks[14], constraints
-        )
-
-    def get_gap_18(self):
-        constraints = [
-            None,
-            self.sum_div_2_points(self.landmarks[18], self.landmarks[14]),
-        ]
-        return self._get_dist_to_point_of_centroid_closest_two_segments(
-            self.landmarks[18], constraints
-        )
-
-    def _get_consecutive_ldk_distances(self, list_of_landmarks):
-        return get_consecutive_ldk_distances(self.landmarks, list_of_landmarks)
 
     @staticmethod
     def get_segment_centroid(segment):
@@ -222,17 +185,10 @@ class Hand(object):
         else:
             for seg_id, segment in self.segments.items():
                 # WARNING: !!! fist compoment corresponds to the y-axis of an array!!
-
                 x_coords = [p[0] for p in segment]
                 y_coords = [p[1] for p in segment]
-
                 x_centroid, y_centroid = self.get_segment_centroid(segment)
-
                 if constraints[0] is not None and constraints[1] is not None:
-                    # if (
-                    #    x_centroid < inverse_perp_line_p1_ldk(constraints[1][1])
-                    #    and x_centroid > inverse_perp_line_p0_ldk(constraints[0][1])
-                    # ):
                     if (
                         max(x_coords) < constraints[1][0]
                         and min(x_coords) > constraints[0][0]
@@ -240,51 +196,24 @@ class Hand(object):
                         valid_segments[seg_id] = segment
                 if constraints[0] is None and constraints[1] is not None:
                     if max(x_coords) < constraints[1][0]:
-                        # if x_centroid < inverse_perp_line_p1_ldk(constraints[1][1]) :
                         valid_segments[seg_id] = segment
                 if constraints[0] is not None and constraints[1] is None:
                     if min(x_coords) > constraints[0][0]:
-                        # if x_centroid >  inverse_perp_line_p0_ldk(constraints[0][1]):
                         valid_segments[seg_id] = segment
         distances = [
-            # (segment_id, segmentations.get_distance_between_contours([point], segment))
             (segment_id, euclidean_distance(point, self.get_segment_centroid(segment)))
             for segment_id, segment in valid_segments.items()
         ]
         distances.sort(key=lambda x: x[1])
         closest_segment1 = self.segments[distances[0][0]]
         closest_segment2 = self.segments[distances[1][0]]
-        if False:
-            closest_segment3 = self.segments[distances[2][0]]
-            closest_segment4 = self.segments[distances[3][0]]
-
-            y_coords = [
-                ("p", point[1]),
-                ("s1", self.get_segment_centroid(closest_segment1)[1]),
-                ("s2", self.get_segment_centroid(closest_segment2)[1]),
-                ("s3", self.get_segment_centroid(closest_segment3)[1]),
-                ("s4", self.get_segment_centroid(closest_segment4)[1]),
-            ]
-            y_coords.sort(key=lambda x: x[1])
-            if "p" == y_coords[1][0]:
-                if ("s1" == y_coords[0][0] and "s2" == y_coords[2][0]) or (
-                    "s2" == y_coords[0][0] and "s1" == y_coords[2][0]
-                ):
-                    pass
-                elif ("s1" == y_coords[0][0] and "s3" == y_coords[2][0]) or (
-                    "s3" == y_coords[0][0] and "s1" == y_coords[2][0]
-                ):
-                    closest_segment2 = closest_segment3
-                elif ("s2" == y_coords[0][0] and "s3" == y_coords[2][0]) or (
-                    "s3" == y_coords[0][0] and "s2" == y_coords[2][0]
-                ):
-                    closest_segment1 = closest_segment3
-
-            # we expect one min_y_coord to be above the y-coord of the landmark point, and the other below
 
         annotate_img(self.img, point, "A")
         segmentations.draw_all_contours(
-            self.img, {1: closest_segment1, 2: closest_segment2}, color=(255, 255, 0), text=True
+            self.img,
+            {1: closest_segment1, 2: closest_segment2},
+            color=(255, 255, 0),
+            text=True,
         )
 
         gap_length = segmentations.get_distance_between_contours(
@@ -297,7 +226,7 @@ class Hand(object):
         return [p[1] for p in list_of_points]
 
     def get_distance_to_ratio_by(self):
-        return self._get_consecutive_ldk_distances([0, 5, 6, 7, 8])
+        return get_consecutive_ldk_distances([0, 5, 6, 7, 8])
 
     def get_carp_bones_max_distances(self):
         self.green_segments = self.detect_color_segments(self.segments, "green")
@@ -320,10 +249,7 @@ class Hand(object):
         return carp_bones_max_distances
 
     def get_carp_bones_max_distances_ratio(self):
-        return self.carp_bones_max_distances / self.get_distance_to_ratio_by() 
-    #euclidean_distance(
-    #        self.landmarks[13], self.landmarks[9]
-    #    )
+        return self.carp_bones_max_distances / self.get_distance_to_ratio_by()
 
     def get_carp_bones_max_diameter(self):
         if len(self.green_segments) > 0:
@@ -370,10 +296,7 @@ class Hand(object):
         return self.carp_bones_sum_perimeters / self.yellow_sum_perimeters
 
     def get_carp_bones_sum_perimeters_ratio(self):
-        return self.carp_bones_sum_perimeters / self.get_distance_to_ratio_by() 
-    #max(
-    #        0.5, euclidean_distance(self.landmarks[0], self.landmarks[5])
-    #    )
+        return self.carp_bones_sum_perimeters / self.get_distance_to_ratio_by()
 
     def get_max_purple_diameter(self):
         self.purple_segments = self.detect_color_segments(self.segments, "purple")
@@ -391,16 +314,10 @@ class Hand(object):
         return max_purple_diameter
 
     def get_max_purple_diameter_ratio(self):
-        return self.max_purple_diameter / self.get_distance_to_ratio_by() 
-    #max(
-    #        0.5, euclidean_distance(self.landmarks[0], self.landmarks[5])
-    #    )
+        return self.max_purple_diameter / self.get_distance_to_ratio_by()
 
     def get_carp_bones_max_diameter_ratio(self):
-        return self.carp_bones_max_diameter / self.get_distance_to_ratio_by() 
-    #max(
-    #        0.5, euclidean_distance(self.landmarks[13], self.landmarks[9])
-    #    )
+        return self.carp_bones_max_diameter / self.get_distance_to_ratio_by()
 
     def get_epifisis_max_diameter(self):
         self.red_segments = self.detect_color_segments(self.segments, "red")
@@ -418,10 +335,27 @@ class Hand(object):
         return epifisis_max_diameter
 
     def get_epifisis_max_diameter_ratio(self):
-        return self.epifisis_max_diameter / self.get_distance_to_ratio_by() 
-    # max(
-    #         0.5, euclidean_distance(self.landmarks[13], self.landmarks[9])
-    #     )
+        return self.epifisis_max_diameter / self.get_distance_to_ratio_by()
+
+    def detect_color_segments(self, segments, color):
+        """
+        Among the segments in `self.segments`, it finds those of the color specified
+        as colored in the corresponding hand file in the folder data_tagged
+        (yellow = phalanx and metaphalanx, green = wrist bones,
+        red = the two bones above the two arm bones,
+        purple = bones between phalanx and metaphalanxs)
+        """
+        color_segments = {}
+        colored_img = cv2.imread(
+            os.path.join(config.colored_data_dir, f"{self.id}.png")
+        )
+        for segment_id, segment in segments.items():
+            if segmentations.has_color(colored_img, segment, color):
+                color_segments[segment_id] = segment
+        self.img = segmentations.draw_all_contours(
+            self.img, color_segments, color=COLOR_TO_BGR[color]
+        )
+        return color_segments
 
     """----------------------------------------------------------------
     Get google's mediapipe's hand lanmarks methods
@@ -492,18 +426,19 @@ class Hand(object):
         mp_draw.draw_landmarks(
             self.img,
             self.raw_landmarks,
-            # mp_hands.HAND_CONNECTIONS,
             list(mp.solutions.hands.HAND_CONNECTIONS),
             mp_drawing_styles.get_default_hand_landmarks_style(),
             mp_drawing_styles.get_default_hand_connections_style(),
         )
         for ldk_id, ldk in self.landmarks.items():
-            #print(ldk)
             cv2.putText(
                 self.img,
                 str(ldk_id),
                 (ldk[0], ldk[1]),
-            cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 0, 255), 1
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.75,
+                (255, 0, 255),
+                1,
             )
 
     """----------------------------------------------------------------
