@@ -7,7 +7,7 @@ import cv2
 import math
 import os
 import numpy as np
-import segmentations as segmentations
+import lib.segmentations as segmentations
 import mediapipe as mp
 from lib.utils import (
     annotate_img,

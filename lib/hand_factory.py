@@ -10,8 +10,8 @@ import time
 from tqdm import tqdm
 from lib.hand import Hand
 import config
-import segmentations as segmentations
-from affine_transf import find_transformation
+import lib.segmentations as segmentations
+from scratch_scripts.affine_transf import find_transformation
 import gc
 
 
