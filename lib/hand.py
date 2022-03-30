@@ -12,8 +12,6 @@ import mediapipe as mp
 from lib.utils import (
     annotate_img,
     euclidean_distance,
-    get_line_function,
-    get_inverse_perp_line,
 )
 from lib.hand_utils import get_consecutive_ldk_distances
 from matplotlib.pyplot import figure
@@ -213,7 +211,7 @@ class Hand(object):
             self.img,
             {1: closest_segment1, 2: closest_segment2},
             color=(255, 255, 0),
-            text=True,
+            write_contour_number=True,
         )
 
         gap_length = segmentations.get_distance_between_contours(

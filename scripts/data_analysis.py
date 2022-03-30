@@ -5,6 +5,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.feature_selection import SelectKBest, f_regression
 from sklearn.utils import shuffle
 import numpy as np
+import sys
+
+sys.path.append("../bone-age")
 import config as config
 from lib.hand_factory import HandFactory
 from sklearn.preprocessing import StandardScaler, PolynomialFeatures
@@ -13,6 +16,7 @@ import matplotlib.pyplot as plt
 import scipy.stats as st
 from datetime import datetime
 from sklearn.metrics import r2_score
+import seaborn as sbn
 
 
 def remove_forbidden_imgs(df):
@@ -45,7 +49,9 @@ def replace_outlier_samples(df, feature, min=None, max=None):
 def remove_outlier_samples(df):
     # TODO: do it without a for?
     for feature in [
-        x for x in config.FEATURES_FOR_DATA_ANALYSIS if x not in ["id","boneage", "gender"]
+        x
+        for x in config.FEATURES_FOR_DATA_ANALYSIS
+        if x not in ["id", "boneage", "gender"]
     ]:
         # print(df[feature].quantile(0.95))
         df = df[df[feature] < df[feature].quantile(config.quartile_remove_outliers)]
@@ -53,8 +59,9 @@ def remove_outlier_samples(df):
         # assert False
     return df
 
+
 def prepare_and_split_train_test(df):
-    
+
     df = shuffle(df).reset_index(drop=True)
     df = remove_outlier_samples(df)
 
@@ -67,7 +74,7 @@ def prepare_and_split_train_test(df):
     df = cut_out_outlier_samples(df, "gap_ratio_5", None, 0.05)
     df = cut_out_outlier_samples(df, "gap_ratio_13", None, 0.13)
     df = cut_out_outlier_samples(df, "gap_ratio_9", None, 0.1)
-    
+
     df = df[config.FEATURES_FOR_DATA_ANALYSIS]
 
     training_data_size = int(len(df) * config.training_sample_size_ratio)
@@ -86,9 +93,9 @@ def prepare_and_split_train_test(df):
     # df_train = df_train.drop("gender", axis=1)
     # df_test = df_test.drop("gender", axis=1)
     return df_train, target_train, df_test, target_test
-    
-def main_train_test_fun(df_train, target_train, df_test, target_test):
 
+
+def main_train_test_fun(df_train, target_train, df_test, target_test):
 
     # print(df_train.head())
     final_train_columns = df_train.columns
@@ -109,7 +116,10 @@ def main_train_test_fun(df_train, target_train, df_test, target_test):
     # target_test = np.exp(target_test)
     # print(reg.coef_)
     disparity = preds - target_test
-    r2 = r2_score(target_test, preds)
+    
+    train_preds = reg.predict(df_train)
+    r2 = r2_score(target_train, train_preds)
+    #r2 = r2_score(target_test, preds)
     return disparity, r2
 
 
@@ -120,7 +130,7 @@ def process_data_by_gender_and_age_bounds(df, gender, age_bounds):
         df_restricted = df_restricted.loc[df_restricted["boneage"] >= age_bounds[0]]
         training_data_size = int(len(df_restricted) * config.training_sample_size_ratio)
         test_data_size = len(df_restricted) - training_data_size
-        #print("Size training and test data:", training_data_size, test_data_size)
+        # print("Size training and test data:", training_data_size, test_data_size)
         return df_restricted
     except Exception as e:
         # raise Exception
@@ -132,11 +142,11 @@ def main(config):
     df = pd.read_csv(config.features_df_path).iloc[
         :, 1:
     ]  # remove Unnamed: 0 -- how to abvoid having it in the first place?
-    #print(df)
+    # print(df)
     df = remove_forbidden_imgs(df)
     df = df.drop(columns=["id"])
-    #print(df.corr())
-    #print(df.head())
+    # print(df.corr())
+    # print(df.head())
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df = df.dropna()
 
@@ -155,16 +165,20 @@ def main(config):
         r2s = []
         num_samples_for_range = 0
         for gender in [0, 1]:
-            #print(age_bounds, gender)
+            # print(age_bounds, gender)
             df_restricted = process_data_by_gender_and_age_bounds(
                 df, gender, age_bounds
             )
             # print(df_restricted)
-            df_train, target_train, df_test, target_test = prepare_and_split_train_test(df_restricted)
+            df_train, target_train, df_test, target_test = prepare_and_split_train_test(
+                df_restricted
+            )
             num_samples_for_range += len(df_train)
             if num_samples_for_range > 10:
                 for _ in range(500):
-                    disparity, r2 = main_train_test_fun(df_train, target_train, df_test, target_test)
+                    disparity, r2 = main_train_test_fun(
+                        df_train, target_train, df_test, target_test
+                    )
                     disparity = pd.Series(disparity)
                     disparity = disparity[
                         disparity
@@ -180,6 +194,9 @@ def main(config):
                     # plt.show()
             # for idx, col in enumerate([x for x in config.FEATURES_FOR_DATA_ANALYSIS if x not in ["boneage", "gender"]]):
             # print(col,feat_scores[idx])
+
+            predictions = np.array(disparity) + np.array(target_test)
+            #plot_predictions(target_test, predictions)
 
         msg = f"Age bounds {age_bounds[0]/12} <= age (years) <= {age_bounds[1]/12}\n    Std of age disparity: {round(np.mean(losses_std),3)} (months). Mean absolute error: {round(np.mean(losses_mean),3)}. Num samples for range: {num_samples_for_range}\n"
         # with open("./logs/test.log", "a") as f:
@@ -208,13 +225,40 @@ def main(config):
         f.write(msg)
 
 
+def plot_predictions(true_labels, predictions):
+    print(np.array(true_labels).reshape(len(true_labels), 1))
+    print(predictions)
+    sbn.scatterplot(true_labels, predictions)
+    reg = linear_model.LinearRegression()
+    true_labels = np.array(true_labels).reshape(len(true_labels), 1).astype(np.float)
+    #predictions = np.array(predictions).reshape(len(predictions), 1)
+    print(true_labels.shape)
+    print(np.array(predictions).shape)
+    print(true_labels)
+    print(np.array(predictions))
+    reg.fit(
+        true_labels,
+        predictions
+    )
+
+    true_labels = [month for month in range(12, 20 * 12, 10)]
+    regressed_predictions = [reg.predict(np.array(true_label).reshape(1,-1)) for true_label in true_labels]
+
+    print(regressed_predictions)
+
+    sbn.lineplot(x=np.array(regressed_predictions).reshape(-1), y=np.array(regressed_predictions).reshape(-1))
+    plt.show()
+
+
 if __name__ == "__main__":
     print("ALL FEATURES")
     main(config)
-    
+
     if True:
-        
-        for feat in [x for x in config.ALL_FEATURE_NAMES if x not in ["id", "boneage", "gender"]]:
+
+        for feat in [
+            x for x in config.ALL_FEATURE_NAMES if x not in ["id", "boneage", "gender"]
+        ]:
             print(f"\n\nFEATURE {feat}\n")
-            config.FEATURES_FOR_DATA_ANALYSIS = [ "boneage", "gender", feat]
+            config.FEATURES_FOR_DATA_ANALYSIS = ["boneage", "gender", feat]
             main(config)

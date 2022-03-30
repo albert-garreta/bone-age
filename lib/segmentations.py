@@ -76,7 +76,7 @@ def _draw_contour(img, list_of_points, text=None, color=None):
     return img
 
 
-def draw_all_contours(img, segmentations, order=None, color=None, text=False):
+def draw_all_contours(img, segmentations, order=None, color=None, write_contour_number=False):
     segmentations = (
         segmentations
         if order is None
@@ -84,8 +84,8 @@ def draw_all_contours(img, segmentations, order=None, color=None, text=False):
     )
     for idx, contour in segmentations.items():
         #print(idx)
-        text = str(idx) if text else None
-        img = _draw_contour(img, contour, text, color)
+        write_contour_number = str(idx) if write_contour_number else None
+        img = _draw_contour(img, contour, write_contour_number, color)
     return img
 
 
