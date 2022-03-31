@@ -11,7 +11,7 @@ from tqdm import tqdm
 from lib.hand import Hand
 import config
 import lib.segmentations as segmentations
-from scratch_scripts.affine_transf import find_transformation
+
 import gc
 
 

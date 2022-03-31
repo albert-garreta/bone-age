@@ -1,5 +1,4 @@
 import cv2
-from importlib_metadata import files
 import matplotlib.pyplot as plt
 import os
 import random

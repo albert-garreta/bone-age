@@ -61,14 +61,14 @@ class Hand(object):
         or attributes being used.
         """
         for feature_name in config.ALL_FEATURE_NAMES:
-            try:
+            #try:
                 feature_value = eval(f"self.get_{feature_name}()")
                 setattr(self, feature_name, feature_value)
-            except Exception as e:
-                print(f"Exception encountered when creating feature {feature_name}")
-                print(e)
-                print(self)
-                return False, feature_name
+            #except Exception as e:
+            #    print(f"Exception encountered when #creating feature {feature_name}")
+            #    print(e)
+            #    print(self)
+            #    return False, feature_name
         return True, None
 
     def get_id(self):
@@ -210,7 +210,7 @@ class Hand(object):
         segmentations.draw_all_contours(
             self.img,
             {1: closest_segment1, 2: closest_segment2},
-            color=(255, 255, 0),
+            color=(255, 0, 255),
             write_contour_number=True,
         )
 
