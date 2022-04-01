@@ -63,6 +63,19 @@ def remove_outlier_samples(df):
 def prepare_and_split_train_test(df):
 
     df = shuffle(df).reset_index(drop=True)
+    df = remove_outlier_samples(df)
+
+    df = cut_out_outlier_samples(df, "max_purple_diameter", 0, 195)
+    # df = cut_out_outlier_samples(df, "max_purple_diameter", None, 0.1)
+    df = cut_out_outlier_samples(df, "epifisis_max_diameter_ratio", 0, None)
+    # df = cut_out_outlier_samples(df, "epifisis_max_diameter_ratio", None, 0.001)
+
+    df = cut_out_outlier_samples(df, "carp_bones_max_diameter_ratio", 0, None)
+    df = cut_out_outlier_samples(df, "gap_ratio_5", None, 0.05)
+    df = cut_out_outlier_samples(df, "gap_ratio_13", None, 0.13)
+    df = cut_out_outlier_samples(df, "gap_ratio_9", None, 0.1)
+
+    df = df[config.FEATURES_FOR_DATA_ANALYSIS]
 
     training_data_size = int(len(df) * config.training_sample_size_ratio)
 
@@ -75,8 +88,8 @@ def prepare_and_split_train_test(df):
 
     target_train = df_train["boneage"]
     target_test = df_test["boneage"]
-    #df_train = df_train.drop("boneage", axis=1)
-    #df_test = df_test.drop("boneage", axis=1)
+    df_train = df_train.drop("boneage", axis=1)
+    df_test = df_test.drop("boneage", axis=1)
     # df_train = df_train.drop("gender", axis=1)
     # df_test = df_test.drop("gender", axis=1)
     return df_train, target_train, df_test, target_test
@@ -85,14 +98,13 @@ def prepare_and_split_train_test(df):
 def main_train_test_fun(df_train, target_train, df_test, target_test):
 
     # print(df_train.head())
-    
-    df_train = df_train[config.FEATURES_FOR_DATA_ANALYSIS]
-    df_test = df_test[config.FEATURES_FOR_DATA_ANALYSIS]
-
     final_train_columns = df_train.columns
     reg = linear_model.LinearRegression()
     scaler = StandardScaler()
-
+    
+    df_train = df_train.drop(columns="id")
+    df_test = df_test.drop(columns="id")
+    
     if config.standardize:
         df_train = scaler.fit_transform(df_train)
     reg = reg.fit(df_train, target_train)
@@ -114,7 +126,7 @@ def main_train_test_fun(df_train, target_train, df_test, target_test):
     return disparity, r2
 
 
-def preprocess_data(df, gender, age_bounds):
+def process_data_by_gender_and_age_bounds(df, gender, age_bounds):
     try:
         df_restricted = df.loc[df["gender"] == gender, :]  # only male/female
         df_restricted = df_restricted.loc[df_restricted["boneage"] <= age_bounds[1]]
@@ -122,37 +134,22 @@ def preprocess_data(df, gender, age_bounds):
         training_data_size = int(len(df_restricted) * config.training_sample_size_ratio)
         test_data_size = len(df_restricted) - training_data_size
         # print("Size training and test data:", training_data_size, test_data_size)
-        df = remove_outlier_samples(df)
-
-        df = cut_out_outlier_samples(df, "max_purple_diameter", 0, 195)
-        # df = cut_out_outlier_samples(df, "max_purple_diameter", None, 0.1)
-        df = cut_out_outlier_samples(df, "epifisis_max_diameter_ratio", 0, None)
-        # df = cut_out_outlier_samples(df, "epifisis_max_diameter_ratio", None, 0.001)
-
-        df = cut_out_outlier_samples(df, "carp_bones_max_diameter_ratio", 0, None)
-        df = cut_out_outlier_samples(df, "gap_ratio_5", None, 0.05)
-        df = cut_out_outlier_samples(df, "gap_ratio_13", None, 0.13)
-        df = cut_out_outlier_samples(df, "gap_ratio_9", None, 0.1)
-        
         return df_restricted
     except Exception as e:
         # raise Exception
         print(e)
         return None
-def get_worse_performing_samples(df, losses):
-    df["losses"] = losses
-    df.sort("losses")
-    print( df["id"].iloc[-20:] )
-    return df["id"].iloc[-20:]
+
 
 def main(config):
     df = pd.read_csv(config.features_df_path).iloc[
         :, 1:
     ]  # remove Unnamed: 0 -- how to abvoid having it in the first place?
+    # print(df)
     df = remove_forbidden_imgs(df)
-    # Avoid dropping the id to be able to study the worst-performing samples later
-    # df = df.drop(columns=["id"]) 
-
+    #df = df.drop(columns=["id"])
+    # print(df.corr())
+    # print(df.head())
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df = df.dropna()
 
@@ -172,17 +169,16 @@ def main(config):
         num_samples_for_range = 0
         for gender in [0, 1]:
             # print(age_bounds, gender)
-            df_restricted = preprocess_data(
+            df_restricted = process_data_by_gender_and_age_bounds(
                 df, gender, age_bounds
             )
             # print(df_restricted)
-
+            df_train, target_train, df_test, target_test = prepare_and_split_train_test(
+                df_restricted
+            )
+            num_samples_for_range += len(df_train)
             if num_samples_for_range > 10:
-                for _ in range(500):
-                    df_train, target_train, df_test, target_test = prepare_and_split_train_test(
-                        df_restricted
-                    )
-                    
+                for _ in range(1):
                     disparity, r2 = main_train_test_fun(
                         df_train, target_train, df_test, target_test
                     )
@@ -199,12 +195,13 @@ def main(config):
                     r2s.append(r2)
                     # pd.Series(disparity).hist()
                     # plt.show()
-                num_samples_for_range += len(df_train)
-                worst_performing_train_ids_last_iteration = get_worse_performing_samples(df_train, loss)
-                predictions = np.array(disparity) + np.array(target_test)
-            
-            
-            
+            # for idx, col in enumerate([x for x in config.FEATURES_FOR_DATA_ANALYSIS if x not in ["boneage", "gender"]]):
+            # print(col,feat_scores[idx])
+                worst_performing_ids = get_worse_performing_samples(df_test, loss)
+                print(worst_performing_ids)
+            predictions = np.array(disparity) + np.array(target_test)
+            #plot_predictions(target_test, predictions)
+
         msg = f"Age bounds {age_bounds[0]/12} <= age (years) <= {age_bounds[1]/12}\n    Std of age disparity: {round(np.mean(losses_std),3)} (months). Mean absolute error: {round(np.mean(losses_mean),3)}. Num samples for range: {num_samples_for_range}\n"
         # with open("./logs/test.log", "a") as f:
         #     f.write(msg)
@@ -231,6 +228,12 @@ def main(config):
     with open("./logs/test.log", "a") as f:
         f.write(msg)
 
+def get_worse_performing_samples(df, losses):
+    assert df.shape[0] == len(losses), f"{df.shape[0]}, {len(losses)}"
+    df["losses"] = losses
+    df = df.sort_values(by="losses", axis=0)
+    #print( df["losses"].iloc[-20:])
+    return df["id"].iloc[-20:]
 
 def plot_predictions(true_labels, predictions):
     print(np.array(true_labels).reshape(len(true_labels), 1))

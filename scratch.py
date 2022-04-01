@@ -25,4 +25,9 @@ for dir in hand_img_files:
     except Exception as e:
         print(e)
     
-    
+def get_worse_performing_samples(df, losses):
+    assert df.shape[0] == len(losses), f"{df.shape[0]}, {len(losses)}"
+    df["losses"] = losses
+    df = df.sort_values(by="losses", axis=0)
+    #print( df["losses"].iloc[-20:])
+    return df["id"].iloc[-20:]

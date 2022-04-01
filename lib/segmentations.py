@@ -24,14 +24,33 @@ def get_segmentations(id, hand_dimensions) -> dict:
     first_key = list(file.keys())[0]
     # bone_ids = [hand_info["id"] for hand_info in file["items"]]
     regions = file[first_key]["regions"]
-    hand_x_dim, hand_y_dim = hand_dimensions[:2]
+    if hand_dimensions is not None: 
+        hand_x_dim, hand_y_dim = hand_dimensions[:2]
+    else:
+        hand_x_dim, hand_y_dim = np.inf, np.inf
     print(hand_dimensions)
     segmentations = {
         region_idx: [
             (
                 # WARNING: sometimes the points are out of the image by one pixel
-                max(0, min(hand_y_dim, regions[region_idx]["shape_attributes"]["all_points_x"][point_idx])),
-                max(0, min(hand_x_dim, regions[region_idx]["shape_attributes"]["all_points_y"][point_idx])),
+                max(
+                    0,
+                    min(
+                        hand_y_dim,
+                        regions[region_idx]["shape_attributes"]["all_points_x"][
+                            point_idx
+                        ],
+                    ),
+                ),
+                max(
+                    0,
+                    min(
+                        hand_x_dim,
+                        regions[region_idx]["shape_attributes"]["all_points_y"][
+                            point_idx
+                        ],
+                    ),
+                ),
             )
             for point_idx in range(
                 len(regions[region_idx]["shape_attributes"]["all_points_x"])
@@ -75,14 +94,16 @@ def _draw_contour(img, list_of_points, text=None, color=None):
     return img
 
 
-def draw_all_contours(img, segmentations, order=None, color=None, write_contour_number=False):
+def draw_all_contours(
+    img, segmentations, order=None, color=None, write_contour_number=False
+):
     segmentations = (
         segmentations
         if order is None
         else {index: segmentations[id] for index, id in enumerate(order)}
     )
     for idx, contour in segmentations.items():
-        #print(idx)
+        # print(idx)
         write_contour_number = str(idx) if write_contour_number else None
         img = _draw_contour(img, contour, write_contour_number, color)
     return img
@@ -129,21 +150,24 @@ def has_color(colored_img, segment, color):
     color_bounds = BGR_color_bounds[color]
     # !!! WARNING: the first component of an array is the y-axis component!!!
     segment_pixels = [colored_img[p[1], p[0], :] for p in segment]
-    return np.mean(
-        [
-            all(
-                [
-                    pixel[channel] > color_bounds["lower"][channel]
-                    for channel in range(3)
-                ]
-                + [
-                    pixel[channel] < color_bounds["upper"][channel]
-                    for channel in range(3)
-                ]
-            )
-            for pixel in segment_pixels
-        ] 
-    )> 0.25  # If we don't put a large enough lower bound, then this will detect off-color bones...# that slighlty touch on-color bounds
+    return (
+        np.mean(
+            [
+                all(
+                    [
+                        pixel[channel] > color_bounds["lower"][channel]
+                        for channel in range(3)
+                    ]
+                    + [
+                        pixel[channel] < color_bounds["upper"][channel]
+                        for channel in range(3)
+                    ]
+                )
+                for pixel in segment_pixels
+            ]
+        )
+        > 0.25
+    )  # If we don't put a large enough lower bound, then this will detect off-color bones...# that slighlty touch on-color bounds
 
 
 def apply_warp(img_gray, matrix):
@@ -155,8 +179,6 @@ def apply_warp(img_gray, matrix):
         borderMode=cv2.BORDER_CONSTANT,
         borderValue=0,
     )
-
-
 
 
 if __name__ == "__main__":
@@ -186,7 +208,7 @@ if __name__ == "__main__":
     keys = []
     weird_cases = []
     random.shuffle(files_list)
-    
+
     for file_name in files_list:
         try:
             key = inspect_json(file_name.split(".")[0])
@@ -195,7 +217,7 @@ if __name__ == "__main__":
             if id != file_name.split(".")[0]:
                 weird_cases.append(key)
                 plt.imshow()
-                #os.remove(os.path.join("data/jsons", file_name))
+                # os.remove(os.path.join("data/jsons", file_name))
         except Exception as e:
             print("Error")
             print(e)

@@ -39,6 +39,7 @@ ALL_FEATURE_NAMES = [
 
 
 FEATURES_FOR_DATA_ANALYSIS = [
+    "id",
     "boneage",
     "gender",
     "max_purple_diameter", # log
@@ -64,7 +65,7 @@ AGE_BOUNDS = [
     (int(12 * (age_center - 4)), int(12 * (age_center + 4)))
     for age_center in [4, 8, 12, 16]
 ] +[(0, 20 * 12)]
-
+AGE_BOUNDS = [(12*12,20*12)]
 hand_img_folder = "./data/boneage-training-dataset"
 colored_data_dir = "./data/data_tagged"
 segmented_hand_img_folder = "./data/jsons"
