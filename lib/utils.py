@@ -1,7 +1,7 @@
 import os
 import config
 import cv2
-
+import numpy as np
 
 def remove_file_types_from_list(list_of_files):
     return [f.split(".")[0] for f in list_of_files]

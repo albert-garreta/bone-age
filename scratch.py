@@ -24,7 +24,7 @@ for dir in hand_img_files:
         cv2.imwrite(write_path, hand.img)
     except Exception as e:
         print(e)
-    
+
 def get_worse_performing_samples(df, losses):
     assert df.shape[0] == len(losses), f"{df.shape[0]}, {len(losses)}"
     df["losses"] = losses

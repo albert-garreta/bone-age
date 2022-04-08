@@ -1,40 +1,40 @@
-#For each of these features, make sure there is a method in the `hand` class
-# called `get_<name of feature>`
+# For each of these features, make sure there is a method in the `hand` class
+# called `get_<name of feature>`4
 ALL_FEATURE_NAMES = [
     "id",
     "boneage",
     "gender",
-    "max_purple_diameter", # log
-    "epifisis_max_diameter_ratio", # log, but some older people have 0 epifisis-> bad
-     "carp_bones_max_diameter_ratio", # log (some older boneages are 0 in this feat)
-     "gap_ratio_17",
-     "gap_ratio_5",
-     "gap_ratio_13",
-     "gap_ratio_9",
-   # "gap_ratio_5",
-   # "gap_ratio_9",
-   # "gap_ratio_13",
-   # "gap_ratio_17",
-   # "gap_5",
-   # "gap_9",
-   # "gap_13",
-   # "gap_17",
-   # "gap_ratio_6",
-   # "gap_ratio_10",
-   # "gap_ratio_14",
-   # "gap_ratio_18",
-   # "carp_bones_max_distances",
-   # "carp_bones_max_distances_ratio",
-   # "carp_bones_max_diameter",
-   # "carp_bones_max_diameter_ratio",
-   # "max_purple_diameter",
-   # "max_purple_diameter_ratio",
-   # "epifisis_max_diameter",
-   # "epifisis_max_diameter_ratio",
-   # "carp_bones_sum_perimeters",
-   # "yellow_sum_perimeters",
-   # "yellow_ratio_green",
-   # "carp_bones_sum_perimeters_ratio",
+    "max_purple_diameter",  # log
+    "epifisis_max_diameter_ratio",  # log, but some older people have 0 epifisis-> bad
+    "carp_bones_max_diameter_ratio",  # log (some older boneages are 0 in this feat)
+    "gap_ratio_17",
+    "gap_ratio_5",
+    "gap_ratio_13",
+    "gap_ratio_9",
+    # "gap_ratio_5",
+    # "gap_ratio_9",
+    # "gap_ratio_13",
+    # "gap_ratio_17",4
+    # "gap_5",
+    # "gap_9",
+    # "gap_13",
+    # "gap_17",
+    # "gap_ratio_6",
+    # "gap_ratio_10",
+    # "gap_ratio_14",
+    # "gap_ratio_18",
+    # "carp_bones_max_distances",
+    # "carp_bones_max_distances_ratio",
+    # "carp_bones_max_diameter",
+    # "carp_bones_max_diameter_ratio",
+    # "max_purple_diameter",
+    # "max_purple_diameter_ratio",
+    # "epifisis_max_diameter",
+    # "epifisis_max_diameter_ratio",
+    # "carp_bones_sum_perimeters",
+    # "yellow_sum_perimeters",
+    # "yellow_ratio_green",
+    # "carp_bones_sum_perimeters_ratio",
 ]
 
 
@@ -42,30 +42,31 @@ FEATURES_FOR_DATA_ANALYSIS = [
     "id",
     "boneage",
     "gender",
-    "max_purple_diameter", # log
-   "epifisis_max_diameter_ratio", # log, but some older people have 0 epifisis-> bad
-    "carp_bones_max_diameter_ratio", # log (some older boneages are 0 in this feat)
+    "max_purple_diameter",  # log
+    "epifisis_max_diameter_ratio",  # log, but some older people have 0 epifisis-> bad
+    "carp_bones_max_diameter_ratio",  # log (some older boneages are 0 in this feat)
     "gap_ratio_17",
     "gap_ratio_5",
     "gap_ratio_13",
     "gap_ratio_9",
-#   "gap_ratio_18",
-#   "gap_ratio_10",
-#   "carp_bones_max_diameter",
-#   "gap_5",
-#   "gap_17",
-#   "carp_bones_max_distances",
-#   "epifisis_max_diameter",
-#   "carp_bones_sum_perime`ters",
-#   "carp_bones_sum_perimeters_ratio",
-#   "yellow_sum_perimeters",
+    #   "gap_ratio_18",
+    #   "gap_ratio_10",
+    #   "carp_bones_max_diameter",
+    #   "gap_5",
+    #   "gap_17",
+    #   "carp_bones_max_distances",
+    #   "epifisis_max_diameter",
+    #   "carp_bones_sum_perime`ters",
+    #   "carp_bones_sum_perimeters_ratio",
+    #   "yellow_sum_perimeters",
 ]
 
 AGE_BOUNDS = [
     (int(12 * (age_center - 4)), int(12 * (age_center + 4)))
     for age_center in [4, 8, 12, 16]
-] +[(0, 20 * 12)]
-AGE_BOUNDS = [(12*12,20*12)]
+] + [(0, 20 * 12)]
+
+AGE_BOUNDS = [(0 * 12, 6 * 12), (6 * 12, 12 * 12), (12 * 12, 20 * 12)] + [(0, 20 * 12)]
 hand_img_folder = "./data/boneage-training-dataset"
 colored_data_dir = "./data/data_tagged"
 segmented_hand_img_folder = "./data/jsons"
@@ -77,12 +78,13 @@ shuffle_data = True
 allow_hand_plotting = True
 do_affine_transform = False
 max_std_in_losses = 20
-quartile_remove_outliers =1
+quartile_remove_outliers = 1
 standardize = True
 annotate_imgs = True
+separate_by_gender = False
 
 # Faulty images we are not using
-FORBIDDEN_IMGS = [
+FORBIDDEN_IMGS = [           
     1451,
     1525,
     1578,
@@ -234,4 +236,4 @@ FORBIDDEN_IMGS = [
     1714,
     1738,
 ]
-#FORBIDDEN_IMGS = []
+# FORBIDDEN_IMGS = []
