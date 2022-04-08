@@ -168,19 +168,35 @@ class Metrics(object):
         self.std_losses.append(round(np.mean(local_metrics.std_losses), 3))
         self.max_losses.append(np.round(np.mean(local_metrics.max_losses), 3))
         self.r2s.append(np.round(np.mean(local_metrics.r2s), 3))
+        self.num_samples.append(local_metrics.num_samples)
+
+    def produce_dataframe(
+        self,
+    ):
+        return pd.DataFrame(
+            {
+                "Std age difference (months)": self.std_losses,
+                "Mean error": self.mean_losses,
+                "Max difference": self.max_losses,
+                "R^2 score": self.r2s,
+                "Num samples trained on": self.num_samples,
+            }
+        )
 
 
 def do_data_analysis_for_age_bound(df, age_bounds):
 
-    num_samples_for_range = 0
-
     local_metrics = Metrics()
+    local_metrics.num_samples.append(0)
+    # Train one model for each gender.
+    # There is a break below in case we are not separating the data by genders
+    # as specified by the parameter `config.separate_by_gender`
     for gender in [0, 1]:
         df_restricted = process_data_by_gender_and_age_bounds(df, gender, age_bounds)
         df_train, target_train, df_test, target_test = prepare_and_split_train_test(
             df_restricted
         )
-        num_samples_for_range += len(df_train)
+        local_metrics.num_samples[0] += len(df_train)
         # Each call to `prepare_and_split_train_test` shuffles `df`, resulting in a different
         # train/test split. Thus we train the model many times with different splits and take the
         # average results at the end (this serves as a cross-valitation process)
@@ -194,7 +210,10 @@ def do_data_analysis_for_age_bound(df, age_bounds):
             local_metrics = main_train_test_fun(
                 df_train, target_train, df_test, target_test, local_metrics
             )
-        return local_metrics
+        # Avoid making a new iteration if we are not training separate models by gender
+        if not config.separate_by_gender:
+            break
+    return local_metrics
 
 
 def main(config):
@@ -208,12 +227,10 @@ def main(config):
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df = df.dropna()
 
-    num_samples_by_age_bounds = []
-
     # We will train a model (or two models if we separate by gender) for each of the age bounds in the config object.
     # E.g. id AGE_BOUNDS = [(0,10), (10,20)], we train a model for kids less than 10 years old, and another for kids
     # between 10 and 20 years old.
-    
+
     # We use the Metrics object to keep track of the metrics we want to measure. We have one,
     # `global_metrics` which stores the results for each age bound. For each age bound we have
     # a `local_metrics` instantiation of the Metrics object, which measures the results obtained
@@ -222,23 +239,15 @@ def main(config):
     for age_bounds in config.AGE_BOUNDS:
         local_metrics = do_data_analysis_for_age_bound(df, age_bounds)
         global_metrics.update_from_local_metrics(local_metrics)
-        
+
+    df_results = global_metrics.produce_dataframe()
     age_bounds_in_years = [(x[0] / 12, x[1] / 12) for x in config.AGE_BOUNDS]
-    df_results = pd.DataFrame(
-        {
-            "age_bounds (years)": age_bounds_in_years,
-            "Std age difference (months)": global_metrics.std_losses,
-            "Mean error": global_metrics.mean_losses,
-            "Max difference": global_metrics.max_losses,
-            "R^2 score": global_metrics.r2s,
-            "Num samples trained on": num_samples_by_age_bounds,
-        }
-    )
+    df["age_bounds (years)"] = age_bounds_in_years
     print(df_results)
 
 
 def get_worse_performing_samples(df, losses, num_samples=20):
-    # Currently not in use
+    # Currently NOT IN USE
     # Returns a pd.Series with the id of the `num_samples` worst performing samples
     assert df.shape[0] == len(losses), f"{df.shape[0]}, {len(losses)}"
     df["losses"] = losses
