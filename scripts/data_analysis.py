@@ -9,10 +9,7 @@ import numpy as np
 from sklearn import linear_model
 from sklearn.utils import shuffle
 from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
-from datetime import datetime
 from sklearn.metrics import r2_score
-import seaborn as sbn
 
 
 """Durant tot l'script, `df` es un DataFrame que conté les columnes `config.FEATURES_FOR_DATA_ANALYSIS`
@@ -61,9 +58,9 @@ def remove_outlier_samples_by_bounds(
     """Removes all rows from df for which the feature `feature` has value below lower_bound or above upper_bound,
     assuming lower_bound!=None and upper_bound != None, respectively
     """
-    if min is not None:
+    if lower_bound is not None:
         df = df.loc[df[feature] > lower_bound]
-    if max is not None:
+    if upper_bound is not None:
         df = df.loc[df[feature] < upper_bound]
     return df
 
@@ -71,16 +68,18 @@ def remove_outlier_samples_by_bounds(
 def prepare_and_split_train_test(df):
 
     df = remove_outlier_samples_by_quartile(df)
+
     # The following bounds have been determined by inspecting the scatterplots of
-    # each feature-
-    df = cut_out_outlier_samples(df, "max_purple_diameter", 0, 195)
+    # each feature
+    df = remove_outlier_samples_by_bounds(df, "max_purple_diameter", 0, 195)
     # df = cut_out_outlier_samples(df, "max_purple_diameter", None, 0.1)
-    df = cut_out_outlier_samples(df, "epifisis_max_diameter_ratio", 0, None)
+    df = remove_outlier_samples_by_bounds(df, "epifisis_max_diameter_ratio", 0, None)
+
     # df = cut_out_outlier_samples(df, "epifisis_max_diameter_ratio", None, 0.001)
-    df = cut_out_outlier_samples(df, "carp_bones_max_diameter_ratio", 0, None)
-    df = cut_out_outlier_samples(df, "gap_ratio_5", None, 0.05)
-    df = cut_out_outlier_samples(df, "gap_ratio_13", None, 0.13)
-    df = cut_out_outlier_samples(df, "gap_ratio_9", None, 0.1)
+    df = remove_outlier_samples_by_bounds(df, "carp_bones_max_diameter_ratio", 0, None)
+    df = remove_outlier_samples_by_bounds(df, "gap_ratio_5", None, 0.05)
+    df = remove_outlier_samples_by_bounds(df, "gap_ratio_13", None, 0.13)
+    df = remove_outlier_samples_by_bounds(df, "gap_ratio_9", None, 0.1)
 
     # Shuffling!
     df = shuffle(df).reset_index(drop=True)
@@ -129,7 +128,7 @@ def main_train_test_fun(df_train, target_train, df_test, target_test, metrics):
     # metric we care most about
     metrics.std_losses.append(np.std(loss))
     metrics.mean_losses.append(np.mean(loss))
-    metrics.max_errors.append(np.max(difference))
+    metrics.max_losses.append(np.max(difference))
     metrics.r2s.append(r2)
 
     return metrics
@@ -152,6 +151,7 @@ def process_data_by_gender_and_age_bounds(df, gender, age_bounds):
 class Metrics(object):
     # Stores  metrics we want to keep track of during our experiments
     def __init__(self):
+        # Loss = abs(prediction - true_boneage)
         self.mean_losses = []
         # This is the metric we care most about: the std of (prediction - true boneage). Note
         # that it is the same as the std of (abs(prediction - true boneage))
@@ -242,7 +242,7 @@ def main(config):
 
     df_results = global_metrics.produce_dataframe()
     age_bounds_in_years = [(x[0] / 12, x[1] / 12) for x in config.AGE_BOUNDS]
-    df["age_bounds (years)"] = age_bounds_in_years
+    df_results["age_bounds (years)"] = age_bounds_in_years
     print(df_results)
 
 

@@ -1,12 +1,12 @@
 # For each of these features, make sure there is a method in the `hand` class
-# called `get_<name of feature>`4
+# called `get_<name of feature>`
 ALL_FEATURE_NAMES = [
     "id",
     "boneage",
     "gender",
-    "max_purple_diameter",  # log
-    "epifisis_max_diameter_ratio",  # log, but some older people have 0 epifisis-> bad
-    "carp_bones_max_diameter_ratio",  # log (some older boneages are 0 in this feat)
+    "max_purple_diameter", 
+    "epifisis_max_diameter_ratio", 
+    "carp_bones_max_diameter_ratio",
     "gap_ratio_17",
     "gap_ratio_5",
     "gap_ratio_13",
@@ -42,9 +42,9 @@ FEATURES_FOR_DATA_ANALYSIS = [
     "id",
     "boneage",
     "gender",
-    "max_purple_diameter",  # log
-    "epifisis_max_diameter_ratio",  # log, but some older people have 0 epifisis-> bad
-    "carp_bones_max_diameter_ratio",  # log (some older boneages are 0 in this feat)
+    "max_purple_diameter",  
+    "epifisis_max_diameter_ratio",  
+    "carp_bones_max_diameter_ratio", 
     "gap_ratio_17",
     "gap_ratio_5",
     "gap_ratio_13",
@@ -61,29 +61,22 @@ FEATURES_FOR_DATA_ANALYSIS = [
     #   "yellow_sum_perimeters",
 ]
 
-AGE_BOUNDS = [
-    (int(12 * (age_center - 4)), int(12 * (age_center + 4)))
-    for age_center in [4, 8, 12, 16]
-] + [(0, 20 * 12)]
-
-AGE_BOUNDS = [(0 * 12, 6 * 12), (6 * 12, 12 * 12), (12 * 12, 20 * 12)] + [(0, 20 * 12)]
+AGE_BOUNDS = [(0 * 12, 6 * 12), (6 * 12, 12 * 12), (12 * 12, 20 * 12), (0, 20 * 12)]
 hand_img_folder = "./data/boneage-training-dataset"
 colored_data_dir = "./data/data_tagged"
 segmented_hand_img_folder = "./data/jsons"
 hand_metadata_folder = "./data/boneage-training-dataset.csv"
 features_df_path = "./data/features_df.csv"
-batch_size = 1100
 training_sample_size_ratio = 0.75
 shuffle_data = True
 allow_hand_plotting = True
-do_affine_transform = False
-max_std_in_losses = 20
 quartile_remove_outliers = 1
 standardize = True
 annotate_imgs = True
 separate_by_gender = False
 
-# Faulty images we are not using
+# Faulty images we are not using because Google's model seems to not generate
+# good enough landmarks
 FORBIDDEN_IMGS = [           
     1451,
     1525,
@@ -236,4 +229,3 @@ FORBIDDEN_IMGS = [
     1714,
     1738,
 ]
-# FORBIDDEN_IMGS = []
