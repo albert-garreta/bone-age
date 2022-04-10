@@ -4,37 +4,41 @@ ALL_FEATURE_NAMES = [
     "id",
     "boneage",
     "gender",
-    "max_purple_diameter", 
-    "epifisis_max_diameter_ratio", 
-    "carp_bones_max_diameter_ratio",
-    "gap_ratio_17",
-    "gap_ratio_5",
-    "gap_ratio_13",
-    "gap_ratio_9",
-    # "gap_ratio_5",
-    # "gap_ratio_9",
-    # "gap_ratio_13",
-    # "gap_ratio_17",4
-    # "gap_5",
-    # "gap_9",
-    # "gap_13",
-    # "gap_17",
-    # "gap_ratio_6",
-    # "gap_ratio_10",
-    # "gap_ratio_14",
-    # "gap_ratio_18",
-    # "carp_bones_max_distances",
-    # "carp_bones_max_distances_ratio",
-    # "carp_bones_max_diameter",
-    # "carp_bones_max_diameter_ratio",
     # "max_purple_diameter",
-    # "max_purple_diameter_ratio",
-    # "epifisis_max_diameter",
     # "epifisis_max_diameter_ratio",
-    # "carp_bones_sum_perimeters",
-    # "yellow_sum_perimeters",
-    # "yellow_ratio_green",
-    # "carp_bones_sum_perimeters_ratio",
+    # "carp_bones_max_diameter_ratio",
+    # "gap_ratio_17",
+    # "gap_ratio_5",
+    # "gap_ratio_13",
+    # "gap_ratio_9",
+    "gap_5",
+    "gap_6",
+    "gap_9",
+    "gap_10",
+    "gap_13",
+    "gap_14",
+    "gap_17",
+    "gap_18",
+    "gap_ratio_5",
+    "gap_ratio_9",
+    "gap_ratio_13",
+    "gap_ratio_17",
+    "gap_ratio_6",
+    "gap_ratio_10",
+    "gap_ratio_14",
+    "gap_ratio_18",
+    "carp_bones_max_distances",
+    "carp_bones_max_distances_ratio",
+    "carp_bones_max_diameter",
+    "carp_bones_max_diameter_ratio",
+    "max_purple_diameter",
+    "max_purple_diameter_ratio",
+    "epifisis_max_diameter",
+    "epifisis_max_diameter_ratio",
+    "carp_bones_sum_perimeters",
+    "yellow_sum_perimeters",
+    "yellow_ratio_green",
+    "carp_bones_sum_perimeters_ratio",
 ]
 
 
@@ -42,9 +46,9 @@ FEATURES_FOR_DATA_ANALYSIS = [
     "id",
     "boneage",
     "gender",
-    "max_purple_diameter",  
-    "epifisis_max_diameter_ratio",  
-    "carp_bones_max_diameter_ratio", 
+    "max_purple_diameter",
+    "epifisis_max_diameter_ratio",
+    "carp_bones_max_diameter_ratio",
     "gap_ratio_17",
     "gap_ratio_5",
     "gap_ratio_13",
@@ -64,20 +68,19 @@ FEATURES_FOR_DATA_ANALYSIS = [
 AGE_BOUNDS = [(0 * 12, 6 * 12), (6 * 12, 12 * 12), (12 * 12, 20 * 12), (0, 20 * 12)]
 hand_img_folder = "./data/boneage-training-dataset"
 colored_data_dir = "./data/data_tagged"
-segmented_hand_img_folder = "./data/jsons"
+jsons_folder = "./data/jsons"
 hand_metadata_folder = "./data/boneage-training-dataset.csv"
 features_df_path = "./data/features_df.csv"
 training_sample_size_ratio = 0.75
 shuffle_data = True
-allow_hand_plotting = True
 quartile_remove_outliers = 1
 standardize = True
-annotate_imgs = True
 separate_by_gender = False
+make_drawings = False
 
 # Faulty images we are not using because Google's model seems to not generate
 # good enough landmarks
-FORBIDDEN_IMGS = [           
+FORBIDDEN_IMGS = [
     1451,
     1525,
     1578,

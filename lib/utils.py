@@ -1,4 +1,6 @@
 import os
+
+from regex import X
 import config
 import cv2
 import numpy as np
@@ -6,19 +8,27 @@ import numpy as np
 def remove_file_types_from_list(list_of_files):
     return [f.split(".")[0] for f in list_of_files]
 
+def get_list_hand_files():
+    # Gets all the hand files (in the form <HAND_ID.png> for which we have a contour)
+    
+    # We restrict to hand ids for which we have a json with the annotated bone contours
+    list_json_files = os.listdir(config.jsons_folder)
+    list_json_files = [
+        file for file in list_json_files if file != ".DS_Store"
+    ]
+    list_json_files.sort()
+    list_ids = remove_file_types_from_list(list_json_files)
+    list_hand_files = [f"{id}.png" for id in list_ids]
+    return list_hand_files
+
 
 def get_valid_hand_ids():
-    files = os.listdir(config.hand_img_folder)
-    files = remove_file_types_from_list(files)
-    jsons = os.listdir(config.segmented_hand_img_folder)
-    jsons = remove_file_types_from_list(jsons)
-    valid_ids = [f for f in files if (f in jsons and f not in config.FORBIDDEN_IMGS)]
+    # Takes the list from the previous function and removes the hands with id
+    # belonging to `config.FORBIDDEN_IMGS`
+    list_hand_files = get_list_hand_files()
+    list_ids = remove_file_types_from_list(list_hand_files)
+    valid_ids = [id for id in list_ids if id not in config.FORBIDDEN_IMGS]
     return valid_ids
-
-
-def get_working_hand_img_files():
-    valid_ids = get_valid_hand_ids()
-    return [os.path.join(config.hand_img_folder, f"{id}.png") for id in valid_ids]
 
 
 def annotate_img(img, point, text):

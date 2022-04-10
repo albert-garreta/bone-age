@@ -61,14 +61,14 @@ class Hand(object):
         or attributes being used.
         """
         for feature_name in config.ALL_FEATURE_NAMES:
-            #try:
+            try:
                 feature_value = eval(f"self.get_{feature_name}()")
                 setattr(self, feature_name, feature_value)
-            #except Exception as e:
-            #    print(f"Exception encountered when #creating feature {feature_name}")
-            #    print(e)
-            #    print(self)
-            #    return False, feature_name
+            except Exception as e:
+               print(f"Exception encountered when creating feature {feature_name}")
+               print(e)
+               print(self)
+               return False, feature_name
         return True, None
 
     def get_id(self):
@@ -80,7 +80,7 @@ class Hand(object):
     def get_gender(self):
         return self.gender
 
-    def gep_gap_ratio(self, landmark_num):
+    def get_gap_ratio(self, landmark_num):
         """landmark_num = google's mediapipe landmark where the gap between bones is measured"""
         distance = self.get_gap(landmark_num)
         if landmark_num == 9:
@@ -100,10 +100,45 @@ class Hand(object):
         if landmark_num == 18:
             landmarks_for_calc_vertical_length = [0, 17, 18, 19, 20]
         vertical_length = get_consecutive_ldk_distances(
+            self.landmarks,
             landmarks_for_calc_vertical_length
         )
         return distance / max(0.1, vertical_length)
 
+    def get_gap_5(self):
+        return self.get_gap(5)
+    def get_gap_6(self):
+        return self.get_gap(6)
+    def get_gap_9(self):
+        return self.get_gap(9)
+    def get_gap_10(self):
+        return self.get_gap(10)
+    def get_gap_13(self):
+        return self.get_gap(13)
+    def get_gap_14(self):
+        return self.get_gap(14)
+    def get_gap_17(self):
+        return self.get_gap(17)
+    def get_gap_18(self):
+        return self.get_gap(18)
+    
+    def get_gap_ratio_5(self):
+        return self.get_gap_ratio(5)
+    def get_gap_ratio_6(self):
+        return self.get_gap_ratio(6)
+    def get_gap_ratio_9(self):
+        return self.get_gap_ratio(9)
+    def get_gap_ratio_10(self):
+        return self.get_gap_ratio(10)
+    def get_gap_ratio_13(self):
+        return self.get_gap_ratio(13)
+    def get_gap_ratio_14(self):
+        return self.get_gap_ratio(14)
+    def get_gap_ratio_17(self):
+        return self.get_gap_ratio(17)
+    def get_gap_ratio_18(self):
+        return self.get_gap_ratio(18)
+    
     def get_gap(self, landmark_num):
         """landmark_num = google's mediapipe landmark where the gap between bones is measured"""
         constraints = [
@@ -224,7 +259,7 @@ class Hand(object):
         return [p[1] for p in list_of_points]
 
     def get_distance_to_ratio_by(self):
-        return get_consecutive_ldk_distances([0, 5, 6, 7, 8])
+        return get_consecutive_ldk_distances(self.landmarks, [0, 5, 6, 7, 8])
 
     def get_carp_bones_max_distances(self):
         self.green_segments = self.detect_color_segments(self.segments, "green")
@@ -364,7 +399,6 @@ class Hand(object):
         """Creates the attribute `landmarks`: a dictionary with items of the form:
         landmark_id (int) : (x_coordinate, y_coordinate)
         """
-        # img = self.img if not config.do_affine_transform else cv2.imread(config.hand_img_folder + f"{self.id}.png")
         self.landmarks = None
         raw_landmarks, success = self._get_raw_landmarks()
         if not success:
@@ -376,14 +410,6 @@ class Hand(object):
         else:
             self.raw_landmarks = raw_landmarks
             self._convert_raw_landmarks()
-
-        # if config.do_affine_transform and self.raw_landmarks:
-        #     matrix = np.load(os.path.join(config.matrices_dir, f"{self.id}_matrix.npy"))
-        #     matrix = matrix[[1,0],:]
-        #     for ldk_id, ldk in self.landmarks.items():
-        #         ldk = np.array(ldk)
-        #         self.landmarks[ldk_id] =np.matmul(matrix[:, :-1], np.transpose(np.array([ldk]), [1,0])).flatten() + matrix[:,-1]
-
         return True
 
     def _get_raw_landmarks(self):
@@ -393,7 +419,6 @@ class Hand(object):
         else:
             return mp_result.multi_hand_landmarks[0], True
 
-    # @no_landmarks_wrapper
     def _convert_raw_landmarks(self):
         landmarks = self.raw_landmarks.landmark
         self.landmarks = {}
@@ -403,7 +428,7 @@ class Hand(object):
     def _process_individual_landmark(self, _id, _landmark):
         x_scaled, y_scaled = self._get_scaled_landmark_coordinates(_landmark)
         self.landmarks[_id] = (x_scaled, y_scaled)
-        if config.annotate_imgs:
+        if config.make_drawings:
             # Write the landmark id on the image
             annotate_img(
                 self.img,
@@ -440,11 +465,27 @@ class Hand(object):
             )
 
     """----------------------------------------------------------------
+    Utility methods 
+    ----------------------------------------------------------------"""
+
+    def show(self):
+        if config.allow_hand_plotting:
+            plt.imshow(self.img)
+            plt.title(
+                f"Hand id {self.id}"  # , boneage {self.boneage}, gender {self.gender}"
+            )
+            plt.show()
+        else:
+            return None
+
+    """----------------------------------------------------------------
+    **NOT USED**
+    
     Organize segmentations
     The segmentations provided are unordered. Here we order them using 
     mediapipe's landmarks as reference
     ----------------------------------------------------------------"""
-
+    """
     def organize_segmentations(self):
         ldks = self.landmarks
         top_of_thumb = ldks[4]
@@ -480,17 +521,4 @@ class Hand(object):
                 shortest_distance = distance
                 next_segment = segment
         return next_segment
-
-    """----------------------------------------------------------------
-    Utility methods 
-    ----------------------------------------------------------------"""
-
-    def show(self):
-        if config.allow_hand_plotting:
-            plt.imshow(self.img)
-            plt.title(
-                f"Hand id {self.id}"  # , boneage {self.boneage}, gender {self.gender}"
-            )
-            plt.show()
-        else:
-            return None
+    """
