@@ -34,3 +34,6 @@ The features are generated using the following information:
 1. The contours of the bones, which we outlined privately.
 2. Google's mediapipe library, which allows to detect hand landmarks: <https://google.github.io/mediapipe/solutions/hands>
 
+### Creating scatterplots for the features
+
+Run `python3 scripts/scatterplots_of_features.py`. This will take the feature DataFrame created with `get_features.py` and draw scatterplots for each feature. The graphs are saved in `bone-age/data/feature-scatterplots`
