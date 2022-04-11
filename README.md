@@ -31,7 +31,6 @@ At the moment a good selection of features for working with the whole age range 
     "max_purple_diameter",
     "epifisis_max_diameter_ratio",
     "carp_bones_max_diameter_ratio",
-    "gap_ratio_17",
     "gap_ratio_5",
     "gap_ratio_13",
     "gap_ratio_9",
