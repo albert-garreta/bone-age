@@ -1,6 +1,7 @@
 data/
 scratch/
 scratch_scripts/
+logs/
 .idea
 .vscode
 __pycache__
