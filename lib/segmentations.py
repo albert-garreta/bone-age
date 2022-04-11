@@ -1,3 +1,4 @@
+from gc import collect
 import cv2
 import numpy as np
 import json
@@ -163,8 +164,13 @@ def has_color(colored_img, contour, color):
     
     # Next we get a list of pairs of pixels corresponding to the points in the contour
     # from the json file.
+
+    # See the remark about clipping in the function `get_segmentations`
+    #clipped_contour = [(np.clip(p[0], 0, colored_img.shape[0]), np.clip(p[1], 0, colored_img.shape[1])) for p in contour]
+    clipped_contour = np.clip(np.array(contour), 0, list(colored_img.shape[:2]))
+    
     # !!! WARNING: the first component of an array is the y-axis component in the Euclidean plane
-    segment_pixels = [colored_img[p[1], p[0], :] for p in contour]
+    segment_pixels = [colored_img[p[1], p[0], :] for p in clipped_contour]
     return (
         np.mean(
             [

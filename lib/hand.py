@@ -10,7 +10,6 @@ import numpy as np
 import lib.segmentations as segmentations
 import mediapipe as mp
 from lib.utils import annotate_img, euclidean_distance, COLOR_NAME_TO_BGR
-from lib.hand_utils import get_consecutive_ldk_distances
 from matplotlib.pyplot import figure
 
 figure(figsize=(12, 8), dpi=80)
@@ -51,14 +50,14 @@ class Hand(object):
         or attributes being used.
         """
         for feature_name in config.ALL_FEATURE_NAMES:
-            try:
+            #try:
                 feature_value = eval(f"self.get_{feature_name}()")
                 setattr(self, feature_name, feature_value)
-            except Exception as e:
-                print(f"Exception encountered when creating feature {feature_name}")
-                print(e)
-                print(self)
-                return False, feature_name
+            # except Exception as e:
+            #     print(f"Exception encountered when creating feature {feature_name}")
+            #     print(e)
+            #     print(self)
+            #     return False, feature_name
         return True, None
 
     def get_id(self):
@@ -148,7 +147,7 @@ class Hand(object):
             landmarks_for_calc_vertical_length = [0, 13, 14, 15, 16]
         if landmark_num == 18:
             landmarks_for_calc_vertical_length = [0, 17, 18, 19, 20]
-        vertical_length = get_consecutive_ldk_distances(
+        vertical_length = self.get_consecutive_ldk_distances(
             self.landmarks, landmarks_for_calc_vertical_length
         )
         return distance / max(0.1, vertical_length)
@@ -277,7 +276,7 @@ class Hand(object):
 
 
     def get_distance_to_ratio_by(self):
-        return get_consecutive_ldk_distances(self.landmarks, [0, 5, 6, 7, 8])
+        return self.get_consecutive_ldk_distances(self.landmarks, [0, 5, 6, 7, 8])
 
     def get_carp_bones_max_distances(self):
         self.green_segments = self.detect_color_segments(self.segments, "green")

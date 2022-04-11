@@ -46,13 +46,16 @@ FEATURES_FOR_DATA_ANALYSIS = [
     "id",
     "boneage",
     "gender",
-    "max_purple_diameter",
+    #"max_purple_diameter",
     "epifisis_max_diameter_ratio",
     "carp_bones_max_diameter_ratio",
-    "gap_ratio_17",
+    #"gap_ratio_17",
     "gap_ratio_5",
-    "gap_ratio_13",
+    #"gap_ratio_13",
     "gap_ratio_9",
+    
+    
+    
     #   "gap_ratio_18",
     #   "gap_ratio_10",
     #   "carp_bones_max_diameter",
@@ -67,13 +70,13 @@ FEATURES_FOR_DATA_ANALYSIS = [
 
 AGE_BOUNDS = [(0 * 12, 6 * 12), (6 * 12, 12 * 12), (12 * 12, 20 * 12), (0, 20 * 12)]
 hand_img_folder = "./data/boneage-training-dataset"
-colored_data_dir = "./data/data_tagged"
+colored_data_dir = "./data/tagged_data_colored_contours"
 jsons_folder = "./data/jsons"
 hand_metadata_folder = "./data/boneage-training-dataset.csv"
 features_df_path = "./data/features_df.csv"
-training_sample_size_ratio = 0.75
+training_sample_size_ratio = 0.85
 shuffle_data = True
-quartile_remove_outliers = 1
+quartile_remove_outliers = None  # not in use currently
 standardize = True
 separate_by_gender = False
 make_drawings = False

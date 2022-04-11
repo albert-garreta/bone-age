@@ -13,7 +13,7 @@ from lib.utils import get_list_hand_files
 
 # We create a dictionary where, for each possible feature creation error type, we save a list of all hand ids for which we
 # obtain such type of error
-error_types = ["read_file", "create_landmarks", "get_segmentaitons"] + [
+error_types = ["read_file", "create_landmarks", "get_segmentations"] + [
     f"create_feature_{feat_name}" for feat_name in config.ALL_FEATURE_NAMES
 ]
 error_info = {error_type: [] for error_type in error_types}
@@ -86,7 +86,7 @@ def get_features_dataframe() -> pd.DataFrame:
                 # It can be useful to draw stuff as features are being created, and then
                 # save the resulting hand image
                 cv2.imwrite(f"./data/drawings/{id}.png", hand.img)
-            hand_features = get_feature_dict(hand)
+            hand_features.append(get_feature_dict(hand))
         else:
             num_failed_files += 1
             error_info[f"create_feature_{feature_name_that_failed}"].append(id)
@@ -111,7 +111,7 @@ def get_features_dataframe() -> pd.DataFrame:
 
 
 def get_feature_dict(hand):
-    return {feature: [getattr(hand, feature)] for feature in config.ALL_FEATURE_NAMES}
+    return {feature: getattr(hand, feature) for feature in config.ALL_FEATURE_NAMES}
 
 
 if __name__ == "__main__":

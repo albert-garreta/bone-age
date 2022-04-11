@@ -39,9 +39,15 @@ def cut_out_outlier_samples(
 
 
 def remove_outlier_samples_by_quartile(df: pd.DataFrame) -> pd.DataFrame:
-    """For each feature, removes all rows from `df` whose feature value
+    """
+    ! CURRENTLY NOT IN USE
+    
+    For each feature, removes all rows from `df` whose feature value
     is above `config.quantile_remove_outliers`"""
-
+    
+    if config.quartile_remove_outliers is None:
+        return df
+    
     # TODO: do it without a for?
     for feature in [
         x
@@ -67,19 +73,18 @@ def remove_outlier_samples_by_bounds(
 
 def prepare_and_split_train_test(df):
 
-    df = remove_outlier_samples_by_quartile(df)
+    #df = remove_outlier_samples_by_quartile(df)
 
     # The following bounds have been determined by inspecting the scatterplots of
     # each feature
     df = remove_outlier_samples_by_bounds(df, "max_purple_diameter", 0, 195)
     # df = cut_out_outlier_samples(df, "max_purple_diameter", None, 0.1)
-    df = remove_outlier_samples_by_bounds(df, "epifisis_max_diameter_ratio", 0, None)
-
+    df = remove_outlier_samples_by_bounds(df, "epifisis_max_diameter_ratio", 0, 0.3)
     # df = cut_out_outlier_samples(df, "epifisis_max_diameter_ratio", None, 0.001)
-    df = remove_outlier_samples_by_bounds(df, "carp_bones_max_diameter_ratio", 0, None)
-    df = remove_outlier_samples_by_bounds(df, "gap_ratio_5", None, 0.05)
-    df = remove_outlier_samples_by_bounds(df, "gap_ratio_13", None, 0.13)
-    df = remove_outlier_samples_by_bounds(df, "gap_ratio_9", None, 0.1)
+    df = remove_outlier_samples_by_bounds(df, "carp_bones_max_diameter_ratio", 0, 0.21)
+    df = remove_outlier_samples_by_bounds(df, "gap_ratio_5", None, 0.066)
+    df = remove_outlier_samples_by_bounds(df, "gap_ratio_13", None, 0.09)
+    df = remove_outlier_samples_by_bounds(df, "gap_ratio_9", None, 0.09)
 
     # Shuffling!
     df = shuffle(df).reset_index(drop=True)
@@ -224,9 +229,9 @@ def main(config):
         :, 1:
     ]  # the 1: removes Unnamed: 0 -- how to avoid having it in the first place?
     df = remove_forbidden_imgs(df)
+
     df.replace([np.inf, -np.inf], np.nan, inplace=True)
     df = df.dropna()
-
     # We will train a model (or two models if we separate by gender) for each of the age bounds in the config object.
     # E.g. id AGE_BOUNDS = [(0,10), (10,20)], we train a model for kids less than 10 years old, and another for kids
     # between 10 and 20 years old.

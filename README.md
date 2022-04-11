@@ -24,6 +24,24 @@ Running `python3 scripts/data_analysis.py`will fit a linear regression using the
     
     [...]
 
+### Recommended features
+
+At the moment a good selection of features for working with the whole age range (from 0 to 20 years old) is 
+
+    "max_purple_diameter",
+    "epifisis_max_diameter_ratio",
+    "carp_bones_max_diameter_ratio",
+    "gap_ratio_17",
+    "gap_ratio_5",
+    "gap_ratio_13",
+    "gap_ratio_9",
+
+When it comes to working with narrower age ranges (0 to 6, 6 to 12, 12 to 20 years old) the following features seem to perform better
+
+    "epifisis_max_diameter_ratio",
+    "carp_bones_max_diameter_ratio",
+    "gap_ratio_5",
+    "gap_ratio_9",
 ### Obtaining `features_df.csv`
 
 The dataset `features_df.csv` is obtained by running <python3 scripts/get_features.py>. This command will create all the features listed in `config.ALL_FEATURES`. The code expects that, for each feature, in `config.ALL_FEATURES`, the class `Hand` has a getter method called `get_<feature_name>`.
@@ -32,8 +50,17 @@ New features can be added/modified by adding/modifying the corresponding method 
 
 The features are generated using the following information:
 1. The contours of the bones, which we outlined privately.
-2. Google's mediapipe library, which allows to detect hand landmarks: <https://google.github.io/mediapipe/solutions/hands>
+2. Google's mediapipe library, which allows to detect hand landmarks. See `landmarks_example.png` for a reference. See also <https://google.github.io/mediapipe/solutions/hands>
+
+**NOTE** At the moment due to small irregularities in how the landmarks are placed within the hand, sometimes the gap features fail to generate and thus the corresponding hand is discarded
 
 ### Creating scatterplots for the features
 
 Run `python3 scripts/scatterplots_of_features.py`. This will take the feature DataFrame created with `get_features.py` and draw scatterplots for each feature. The graphs are saved in `bone-age/data/feature-scatterplots`
+
+
+## Data
+
+At the moment the code expects to find data in the directory `bone-age/data`. Hand metadata is expected to be in `bone-age/data/boneage-training-dataset.csv`. The json files are expected to be in `bone-age/data/jsons`. The raw images in `bone-age/data/boneage-training`. The hands with colored contours are expected to be in `bone-age/data/tagged_data_contours.csv`
+
+All this can be configured within `config.py`

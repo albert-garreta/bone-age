@@ -34,3 +34,4 @@ for feature in features:
     plt.title(feature)
     plt.xticks(np.arange(0, 20, 1))
     plt.savefig(f"data/feature_scatterplots/{feature}.png")
+    plt.close() 
