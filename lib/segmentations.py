@@ -1,55 +1,68 @@
 import cv2
-import matplotlib.pyplot as plt
-import os
-import random
-import matplotlib.pyplot as plt
-import config
-import cv2
-import math
-import mediapipe as mp
 import numpy as np
 import json
 import scipy.spatial.distance as distance
 from scipy.spatial import ConvexHull
-import random
 
 
-def get_segmentations(id, hand_dimensions) -> dict:
+"""
+This file contains functions for working with the contours of bones provided 
+in the json files (these files have been obtained privately and for the moment are not publicly available).
+Each json file has the name <HAND_ID>.json. Such a file contains the bone contours of the hand given in
+<HAND_ID>.png. A contour is a list of points.
+
+Here we provide methods for: 
+    - Extracting the contours from the json files,
+    - Finding the diameter and the perimeter of a contour
+    - Finding the distance between two contours
+    - Detecting the type of contour: for each <HAND_ID>.json we also
+    have a private .png file where bones have been colored with distinct colors
+    depending on the type of bone (there are 5 types of bones in total). 
+    
+    See the `has_color` function.
+"""
+
+
+def get_segmentations(id, hand_dimensions=None) -> dict:
     """
+    Given a hand id (e.g. 1712), gets all the bone contours provided in the corresponding json file
+    (following the example, this would be 1712.json)
+    for the hand. A contour is a list of points surrounding a bone. For each hand, this function
+    returns a dictionary mapping the order of appearance of a contour in the json file, to the
+    contour.
+
+    NOTE: This function accepts (optionally) the dimensions of image <ID>.png as input
+    because sometimes the contours have some coordinates which are off the image by one pixel,
+    and thus they need to be clipped. If `hand_dimensions` is not provided then the function
+    ignores this, but then one may get a `list index out of range` error later on.
+
     Returns:
         dict: hand_id: str  -> list_of_contours (each contour is a list of points): list[list[tuple(float, float)]]
     """
     with open(f"data/jsons/{id}.json", "r") as f:
         file = json.load(f)
+
+    # From here on it's just about extracting the contours from the json in the specified dict format
     first_key = list(file.keys())[0]
-    # bone_ids = [hand_info["id"] for hand_info in file["items"]]
     regions = file[first_key]["regions"]
-    if hand_dimensions is not None: 
+    if hand_dimensions is not None:
         hand_x_dim, hand_y_dim = hand_dimensions[:2]
     else:
         hand_x_dim, hand_y_dim = np.inf, np.inf
-    print(hand_dimensions)
     segmentations = {
         region_idx: [
             (
-                # WARNING: sometimes the points are out of the image by one pixel
-                max(
+                # WARNING: sometimes the points are out of the image by one pixel.
+                # For this reason we make this max-min clipping
+                np.clip(
+                    regions[region_idx]["shape_attributes"]["all_points_x"][point_idx],
                     0,
-                    min(
-                        hand_y_dim,
-                        regions[region_idx]["shape_attributes"]["all_points_x"][
-                            point_idx
-                        ],
-                    ),
+                    hand_y_dim,
                 ),
-                max(
+                np.clip(
+                    regions[region_idx]["shape_attributes"]["all_points_y"][point_idx],
                     0,
-                    min(
-                        hand_x_dim,
-                        regions[region_idx]["shape_attributes"]["all_points_y"][
-                            point_idx
-                        ],
-                    ),
+                    hand_x_dim,
                 ),
             )
             for point_idx in range(
@@ -61,17 +74,35 @@ def get_segmentations(id, hand_dimensions) -> dict:
     return segmentations
 
 
-def _draw_point(img, point, color):
-    return cv2.circle(
-        img,
-        (int(point[0]), int(point[1])),
-        radius=0,
-        color=color,
-        thickness=3,
-    )
+def get_diameter(list_of_points):
+    # Gets the diameter of a list of points
+    pairwise_distances = distance.pdist(np.array(list_of_points))
+    return np.max(pairwise_distances)
+
+
+def get_distance_between_two_lists_of_points(list1, list2):
+    pairwise_distances = distance.cdist(np.array(list1), np.array(list2))
+    return np.min(pairwise_distances)
+
+
+def get_perimeter(list_of_points):
+    ch = ConvexHull(np.array(list_of_points).astype(np.float32))
+    # NOTE: ConvexHull().area is actually the perimeter if the input
+    # matrix is 2dimensional, as it is in our case
+    return ch.area
+
+
+def draw_all_contours(img, segmentations, color=None, write_contour_number=False):
+    for idx, contour in segmentations.items():
+        write_contour_number = str(idx) if write_contour_number else None
+        img = _draw_contour(img, contour, write_contour_number, color)
+    return img
 
 
 def _draw_contour(img, list_of_points, text=None, color=None):
+    """Given an image and a list of points, draws each point on the
+    image. Optionally it writes a piece of text on the mean point of
+    the set of points"""
     if text is not None:
         center_x = int(np.mean([p[0] for p in list_of_points]))
         center_y = int(np.mean([p[1] for p in list_of_points]))
@@ -94,44 +125,19 @@ def _draw_contour(img, list_of_points, text=None, color=None):
     return img
 
 
-def draw_all_contours(
-    img, segmentations, order=None, color=None, write_contour_number=False
-):
-    segmentations = (
-        segmentations
-        if order is None
-        else {index: segmentations[id] for index, id in enumerate(order)}
+def _draw_point(img, point, color):
+    return cv2.circle(
+        img,
+        (int(point[0]), int(point[1])),
+        radius=0,
+        color=color,
+        thickness=3,
     )
-    for idx, contour in segmentations.items():
-        # print(idx)
-        write_contour_number = str(idx) if write_contour_number else None
-        img = _draw_contour(img, contour, write_contour_number, color)
-    return img
 
 
-def _get_convex_hull(list_of_points):
-    cvx_hull = cv2.convexHull(np.array(list_of_points).astype(np.float32))
-    cvx_hull = [(p[0][0], p[0][1]) for p in cvx_hull]
-    return cvx_hull
-
-
-def get_diameter(list_of_points):
-    pairwise_distances = distance.pdist(np.array(list_of_points))
-    return np.max(pairwise_distances)
-
-
-def get_distance_between_contours(contour1, contour2):
-    pairwise_distances = distance.cdist(np.array(contour1), np.array(contour2))
-    return np.min(pairwise_distances)
-
-
-def get_perimeter(list_of_points):
-    ch = ConvexHull(np.array(list_of_points).astype(np.float32))
-    # NOTE: ConvexHull().area is actually the perimeter if the input
-    # matrix is 2dimensional
-    return ch.area
-
-
+# Next we write a function that allows to detect the color of a contour according to the
+# first batch of "tagged" hands we got (see the folder `tagged_data_colored_contours`).
+# We start by specifying BGR bounds for each color.
 BGR_color_bounds = {
     "yellow": {"lower": (0, 170, 170), "upper": (50, 255, 255)},
     "green": {"lower": (115, 185, 115), "upper": (170, 255, 185)},
@@ -141,15 +147,24 @@ BGR_color_bounds = {
 }
 
 
-def has_color(colored_img, segment, color):
-    # print(colored_img)
-    # print(colored_img.shape)
-    # print(segment)
-    # print(color)
+def has_color(colored_img, contour, color):
+    """Given an image `colored_img` with colored bone contours (as in the images from the folder
+    `tagged_data_colored_contours`, and a contour (i.e. a list of points), and a color (e.g. "yellow")
+    the function determines wether or not the contour is of the specified color in `colored_img`
+
+    TODO: I think that the current method for detecting the colors appearing in a contour
+    can be improved significantly. However, it is not completely trivial (i.e. the pixels to detect
+    don't always have a "pure" color --sometimes a pixel has a dimmed green instead of a clear green, etc---
+    I suspect this may be caused because the points from the json files are sometimes offset by one (or more?)
+    pixels --see the note about clipping in the function `get_segmentations`--- though I'm not completely sure)
+    """
 
     color_bounds = BGR_color_bounds[color]
-    # !!! WARNING: the first component of an array is the y-axis component!!!
-    segment_pixels = [colored_img[p[1], p[0], :] for p in segment]
+    
+    # Next we get a list of pairs of pixels corresponding to the points in the contour
+    # from the json file.
+    # !!! WARNING: the first component of an array is the y-axis component in the Euclidean plane
+    segment_pixels = [colored_img[p[1], p[0], :] for p in contour]
     return (
         np.mean(
             [
@@ -168,59 +183,3 @@ def has_color(colored_img, segment, color):
         )
         > 0.25
     )  # If we don't put a large enough lower bound, then this will detect off-color bones...# that slighlty touch on-color bounds
-
-
-def apply_warp(img_gray, matrix):
-    return cv2.warpAffine(
-        img_gray,
-        matrix,
-        img_gray.shape,
-        flags=cv2.INTER_LINEAR + cv2.WARP_INVERSE_MAP,
-        borderMode=cv2.BORDER_CONSTANT,
-        borderValue=0,
-    )
-
-
-if __name__ == "__main__":
-
-    def inspect_json(id):
-
-        with open(f"data/jsons/{id}.json", "r") as f:
-            file = json.load(f)
-        first_key = list(file.keys())[0]
-        id = first_key.split(".")[0]
-        return id
-        img = cv2.imread(f"data/boneage-training-dataset/{id}.png", 1)
-        segmentations = get_segmentations(id)
-
-        for idx, contour in segmentations.items():
-            img = _draw_contour(img, contour, str(idx))
-
-        for idx, contour in segmentations.items():
-            diameter = get_diameter(contour)
-            # print(f"diameter of {idx}: {diameter}")
-
-        # plt.imshow(img)
-        # plt.title(id)
-        # plt.show()
-
-    files_list = os.listdir("data/jsons")
-    keys = []
-    weird_cases = []
-    random.shuffle(files_list)
-
-    for file_name in files_list:
-        try:
-            key = inspect_json(file_name.split(".")[0])
-            keys.append(key)
-            id = key.split(".")[0]
-            if id != file_name.split(".")[0]:
-                weird_cases.append(key)
-                plt.imshow()
-                # os.remove(os.path.join("data/jsons", file_name))
-        except Exception as e:
-            print("Error")
-            print(e)
-    print(len(files_list))
-    print(len(weird_cases))
-    print(len(set(keys)))

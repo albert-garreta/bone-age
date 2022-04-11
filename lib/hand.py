@@ -249,7 +249,7 @@ class Hand(object):
             write_contour_number=True,
         )
 
-        gap_length = segmentations.get_distance_between_contours(
+        gap_length = segmentations.get_distance_between_two_lists_of_points(
             closest_segment1, closest_segment2
         )
         return gap_length
@@ -273,7 +273,7 @@ class Hand(object):
             distances = []
             for segment_pair in green_seg_pair_list:
                 distances.append(
-                    segmentations.get_distance_between_contours(*segment_pair)
+                    segmentations.get_distance_between_two_lists_of_points(*segment_pair)
                 )
             carp_bones_max_distances = max(distances)
         else:
