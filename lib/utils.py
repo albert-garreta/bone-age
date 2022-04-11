@@ -44,3 +44,13 @@ def annotate_img(img, point, text):
 
 def euclidean_distance(point1, point2):
     return np.sqrt((point1[0]-point2[0])**2 + (point1[1]-point2[1])**2)
+
+
+COLOR_NAME_TO_BGR = {
+    "green": (0, 255, 0),
+    "blue": (255, 0, 0),
+    "red": (0, 0, 255),
+    "cyan": (255, 255, 0),
+    "purple": (255, 0, 255),
+    "yellow": (0, 255, 255),
+}

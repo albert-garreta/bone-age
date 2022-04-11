@@ -9,36 +9,26 @@ import os
 import numpy as np
 import lib.segmentations as segmentations
 import mediapipe as mp
-from lib.utils import (
-    annotate_img,
-    euclidean_distance,
-)
+from lib.utils import annotate_img, euclidean_distance, COLOR_NAME_TO_BGR
 from lib.hand_utils import get_consecutive_ldk_distances
 from matplotlib.pyplot import figure
 
 figure(figsize=(12, 8), dpi=80)
+
+# Google mediapipe methods
 mp_hands = mp.solutions.hands.Hands()
 mp_draw = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 
-COLOR_TO_BGR = {
-    "green": (0, 255, 0),
-    "blue": (255, 0, 0),
-    "red": (0, 0, 255),
-    "cyan": (255, 255, 0),
-    "purple": (255, 0, 255),
-    "yellow": (0, 255, 255),
-}
-
 
 class Hand(object):
     def __init__(self, _image, _boneage, _gender, _id, _segments):
-
         self.img = _image
         self.boneage = _boneage
         self.gender = _gender
         self.id = _id
-        # list of contours (contour = segment=  list of points)
+        # list of contours (contour =  list of points). A contour sometimes is called
+        # `segment` in this repository
         self.segments = _segments
 
     def __repr__(self):
@@ -65,10 +55,10 @@ class Hand(object):
                 feature_value = eval(f"self.get_{feature_name}()")
                 setattr(self, feature_name, feature_value)
             except Exception as e:
-               print(f"Exception encountered when creating feature {feature_name}")
-               print(e)
-               print(self)
-               return False, feature_name
+                print(f"Exception encountered when creating feature {feature_name}")
+                print(e)
+                print(self)
+                return False, feature_name
         return True, None
 
     def get_id(self):
@@ -80,9 +70,68 @@ class Hand(object):
     def get_gender(self):
         return self.gender
 
+    """----------------------------------------------------------------
+    Methods for creating features related to the gaps between bones, i.e.
+    gap_bone_ratio_<LANDMARK_ID> and gab_bone_<LANDMARK>
+    ----------------------------------------------------------------"""
+
+    def get_gap_5(self):
+        return self.get_gap(5)
+
+    def get_gap_6(self):
+        return self.get_gap(6)
+
+    def get_gap_9(self):
+        return self.get_gap(9)
+
+    def get_gap_10(self):
+        return self.get_gap(10)
+
+    def get_gap_13(self):
+        return self.get_gap(13)
+
+    def get_gap_14(self):
+        return self.get_gap(14)
+
+    def get_gap_17(self):
+        return self.get_gap(17)
+
+    def get_gap_18(self):
+        return self.get_gap(18)
+
+    def get_gap_ratio_5(self):
+        return self.get_gap_ratio(5)
+
+    def get_gap_ratio_6(self):
+        return self.get_gap_ratio(6)
+
+    def get_gap_ratio_9(self):
+        return self.get_gap_ratio(9)
+
+    def get_gap_ratio_10(self):
+        return self.get_gap_ratio(10)
+
+    def get_gap_ratio_13(self):
+        return self.get_gap_ratio(13)
+
+    def get_gap_ratio_14(self):
+        return self.get_gap_ratio(14)
+
+    def get_gap_ratio_17(self):
+        return self.get_gap_ratio(17)
+
+    def get_gap_ratio_18(self):
+        return self.get_gap_ratio(18)
+
     def get_gap_ratio(self, landmark_num):
         """landmark_num = google's mediapipe landmark where the gap between bones is measured"""
         distance = self.get_gap(landmark_num)
+
+        # The variable `landmaks_for_calc_vertical_length` contains the landmarks for which
+        # we compute the sum of distances between each two consecutive landmarks in the list.
+        # Then, we quotient the gap value `distance` by such sum of distances, in order to obtain
+        # features of the type gap_ratio_<landmark_num>.
+
         if landmark_num == 9:
             landmarks_for_calc_vertical_length = [0, 9, 10, 11, 12]
         if landmark_num == 5:
@@ -100,45 +149,10 @@ class Hand(object):
         if landmark_num == 18:
             landmarks_for_calc_vertical_length = [0, 17, 18, 19, 20]
         vertical_length = get_consecutive_ldk_distances(
-            self.landmarks,
-            landmarks_for_calc_vertical_length
+            self.landmarks, landmarks_for_calc_vertical_length
         )
         return distance / max(0.1, vertical_length)
 
-    def get_gap_5(self):
-        return self.get_gap(5)
-    def get_gap_6(self):
-        return self.get_gap(6)
-    def get_gap_9(self):
-        return self.get_gap(9)
-    def get_gap_10(self):
-        return self.get_gap(10)
-    def get_gap_13(self):
-        return self.get_gap(13)
-    def get_gap_14(self):
-        return self.get_gap(14)
-    def get_gap_17(self):
-        return self.get_gap(17)
-    def get_gap_18(self):
-        return self.get_gap(18)
-    
-    def get_gap_ratio_5(self):
-        return self.get_gap_ratio(5)
-    def get_gap_ratio_6(self):
-        return self.get_gap_ratio(6)
-    def get_gap_ratio_9(self):
-        return self.get_gap_ratio(9)
-    def get_gap_ratio_10(self):
-        return self.get_gap_ratio(10)
-    def get_gap_ratio_13(self):
-        return self.get_gap_ratio(13)
-    def get_gap_ratio_14(self):
-        return self.get_gap_ratio(14)
-    def get_gap_ratio_17(self):
-        return self.get_gap_ratio(17)
-    def get_gap_ratio_18(self):
-        return self.get_gap_ratio(18)
-    
     def get_gap(self, landmark_num):
         """landmark_num = google's mediapipe landmark where the gap between bones is measured"""
         constraints = [
@@ -219,8 +233,6 @@ class Hand(object):
             for seg_id, segment in self.segments.items():
                 # WARNING: !!! fist compoment corresponds to the y-axis of an array!!
                 x_coords = [p[0] for p in segment]
-                y_coords = [p[1] for p in segment]
-                x_centroid, y_centroid = self.get_segment_centroid(segment)
                 if constraints[0] is not None and constraints[1] is not None:
                     if (
                         max(x_coords) < constraints[1][0]
@@ -257,6 +269,12 @@ class Hand(object):
     @staticmethod
     def get_min_y_coord(list_of_points):  #
         return [p[1] for p in list_of_points]
+    
+    
+    """----------------------------------------------------------------
+    Methods for creating features related to the diameter of bones
+    ----------------------------------------------------------------"""
+
 
     def get_distance_to_ratio_by(self):
         return get_consecutive_ldk_distances(self.landmarks, [0, 5, 6, 7, 8])
@@ -273,7 +291,9 @@ class Hand(object):
             distances = []
             for segment_pair in green_seg_pair_list:
                 distances.append(
-                    segmentations.get_distance_between_two_lists_of_points(*segment_pair)
+                    segmentations.get_distance_between_two_lists_of_points(
+                        *segment_pair
+                    )
                 )
             carp_bones_max_distances = max(distances)
         else:
@@ -386,9 +406,26 @@ class Hand(object):
             if segmentations.has_color(colored_img, segment, color):
                 color_segments[segment_id] = segment
         self.img = segmentations.draw_all_contours(
-            self.img, color_segments, color=COLOR_TO_BGR[color]
+            self.img, color_segments, color=COLOR_NAME_TO_BGR[color]
         )
         return color_segments
+
+    @staticmethod
+    def get_distance(point1, point2):
+        # point = tuple(int, int)
+        translated_point = (point1[0] - point2[0], point1[1] - point2[1])
+        return np.sqrt(translated_point[0] ** 2 + translated_point[1] ** 2)
+
+    def get_consecutive_ldk_distances(self, _dict_landmarks, _landmark_ids_list):
+        total_distance = 0
+        for idx, ldk_id in enumerate(_landmark_ids_list[:-1]):
+            next_ldk_id = _landmark_ids_list[idx + 1]
+            distance = self.get_distance(
+                _dict_landmarks[ldk_id], _dict_landmarks[next_ldk_id]
+            )
+            # print(distance, ldk_id, next_ldk_id)
+            total_distance += distance
+        return total_distance
 
     """----------------------------------------------------------------
     Get google's mediapipe's hand lanmarks methods
@@ -469,56 +506,8 @@ class Hand(object):
     ----------------------------------------------------------------"""
 
     def show(self):
-        if config.allow_hand_plotting:
-            plt.imshow(self.img)
-            plt.title(
-                f"Hand id {self.id}"  # , boneage {self.boneage}, gender {self.gender}"
-            )
-            plt.show()
-        else:
-            return None
-
-    """----------------------------------------------------------------
-    **NOT USED**
-    
-    Organize segmentations
-    The segmentations provided are unordered. Here we order them using 
-    mediapipe's landmarks as reference
-    ----------------------------------------------------------------"""
-    """
-    def organize_segmentations(self):
-        ldks = self.landmarks
-        top_of_thumb = ldks[4]
-        last_segment_id = None
-        nonordered_segments = set(self.segments.keys())
-        ordered_segment_ids = []
-        while len(nonordered_segments) > 0:
-            next_segment_id = self.find_next_segment(
-                top_of_thumb, nonordered_segments, last_segment_id
-            )
-            ordered_segment_ids.append(next_segment_id)
-            last_segment_id = next_segment_id
-            if last_segment_id is not None:
-                # print(nonordered_segments)
-                nonordered_segments.remove(last_segment_id)
-        self.ordered_segment_ids = ordered_segment_ids
-
-    def find_next_segment(
-        self, reference_landmark, nonordered_segment_ids, last_segment_id
-    ):
-
-        shortest_distance = np.inf
-        next_segment = None
-        if last_segment_id is not None:
-            last_segment = self.segments[last_segment_id]
-        else:
-            last_segment = [reference_landmark]
-        for segment in nonordered_segment_ids:
-            distance = segmentations.get_distance_between_contours(
-                last_segment, self.segments[segment]
-            )
-            if distance < shortest_distance:
-                shortest_distance = distance
-                next_segment = segment
-        return next_segment
-    """
+        plt.imshow(self.img)
+        plt.title(
+            f"Hand id {self.id}"  # , boneage {self.boneage}, gender {self.gender}"
+        )
+        plt.show()
