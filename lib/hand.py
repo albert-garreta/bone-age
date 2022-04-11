@@ -50,14 +50,14 @@ class Hand(object):
         or attributes being used.
         """
         for feature_name in config.ALL_FEATURE_NAMES:
-            #try:
+            try:
                 feature_value = eval(f"self.get_{feature_name}()")
                 setattr(self, feature_name, feature_value)
-            # except Exception as e:
-            #     print(f"Exception encountered when creating feature {feature_name}")
-            #     print(e)
-            #     print(self)
-            #     return False, feature_name
+            except Exception as e:
+                print(f"Exception encountered when creating feature {feature_name}")
+                print(e)
+                print(self)
+                return False, feature_name
         return True, None
 
     def get_id(self):
