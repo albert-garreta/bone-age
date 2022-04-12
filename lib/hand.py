@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import sys
 
+from sklearn import get_config
+from sympy import get_contraction_structure
+
 sys.path.append("../bone-age")
 import config
 import cv2
@@ -123,7 +126,8 @@ class Hand(object):
         return self.get_gap_ratio(18)
 
     def get_gap_ratio(self, landmark_num):
-        """landmark_num = google's mediapipe landmark where the gap between bones is measured"""
+        """landmark_num = google's mediapipe landmark where the gap between bones is measured.
+        See `landmarks_example.png` for a reference on what each number indicates"""
         distance = self.get_gap(landmark_num)
 
         # The variable `landmaks_for_calc_vertical_length` contains the landmarks for which
@@ -153,11 +157,39 @@ class Hand(object):
         return distance / max(0.1, vertical_length)
 
     def get_gap(self, landmark_num):
-        """landmark_num = google's mediapipe landmark where the gap between bones is measured"""
-        constraints = [
-            self.get_point_in_between(self.landmarks[9], self.landmarks[13]),
-            self.get_point_in_between(self.landmarks[9], self.landmarks[5]),
-        ]
+        """
+        landmark_num = google's mediapipe landmark where the gap between bones is measured
+
+        This function should return the distance between bones in the gap between bones that forms
+        across all joints in the fingers. For example, if `landmark_num=5`, then this function
+        should return the distance between the lower phalanx of the index finger, and the metacarpal
+        of the index finger (the reason why we focus on these bones in this example is because of the
+        landmark_num: see the `lanmarks_example.png`).
+
+        If there are "bone formations" (i.e. small bones that appear as the person
+        grows and which are eventually merged into the "normal" bones) --these are contoured
+        in purple color in the images from `tagged_data_colored_contours`-- then these
+        are counted as part of the phalanx or metacarpal when it comes to computing the distance.
+
+        The way to compute this distance is not super easy: naively, we could just take the two
+        contours which are closer to `landmark_num`. However, in many cases this will detect
+        a phalanx and its "bone fromation" (the distance between these two bones is much smaller
+        than the actual distance we want to find). Hence, we need to refine this method a little.
+
+        To fix this I added the following heuristic which seems to work reasonably, BUT IS NOT OPTIMAL
+        BY ANY MEANS: we take the landmarks A and B such that A is the closest landmark above `landmark_num`
+        and B is the closest landmark below `landmark_num`. Then we take the points M_1, M_2
+        in the segments [A, landmark_num] and [landmark_num, B] (we take the points that are 80% close to A or B,
+        respectively) and then we set as invalid all contours
+        that have some pixel above or below (vertically) M_1 or M_2.
+
+        The hope is that this discards the pathological case mentioned above: typically, the phalanx
+        has some pixel above M_1, and similarly for the metacarpal.
+
+        TODO: this is something to be improved
+
+        """
+        constraints = self.get_constraints_for_calculaiton_of_gaps(landmark_num)
         return self._get_dist_to_point_of_centroid_closest_two_segments(
             self.landmarks[landmark_num], constraints
         )
@@ -217,7 +249,7 @@ class Hand(object):
         )
 
     @staticmethod
-    def get_segment_centroid(segment):
+    def get_segment_mean_point(segment):
         center_x = int(np.mean([p[0] for p in segment]))
         center_y = int(np.mean([p[1] for p in segment]))
         return (center_x, center_y)
@@ -225,12 +257,13 @@ class Hand(object):
     def _get_dist_to_point_of_centroid_closest_two_segments(
         self, point, constraints=None
     ):
+        """See the documentation of `get_gap`"""
         valid_segments = {}
         if constraints is None:
             valid_segments = self.segments
         else:
             for seg_id, segment in self.segments.items():
-                # WARNING: !!! fist compoment corresponds to the y-axis of an array!!
+                # WARNING: !!! fist compoment corresponds to the y-axis of an array
                 x_coords = [p[0] for p in segment]
                 if constraints[0] is not None and constraints[1] is not None:
                     if (
@@ -245,35 +278,34 @@ class Hand(object):
                     if min(x_coords) > constraints[0][0]:
                         valid_segments[seg_id] = segment
         distances = [
-            (segment_id, euclidean_distance(point, self.get_segment_centroid(segment)))
+            (
+                segment_id,
+                euclidean_distance(point, self.get_segment_mean_point(segment)),
+            )
             for segment_id, segment in valid_segments.items()
         ]
         distances.sort(key=lambda x: x[1])
         closest_segment1 = self.segments[distances[0][0]]
         closest_segment2 = self.segments[distances[1][0]]
 
-        annotate_img(self.img, point, "A")
-        segmentations.draw_all_contours(
-            self.img,
-            {1: closest_segment1, 2: closest_segment2},
-            color=(255, 0, 255),
-            write_contour_number=True,
-        )
-
         gap_length = segmentations.get_distance_between_two_lists_of_points(
             closest_segment1, closest_segment2
         )
+
+        if config.make_drawings:
+            annotate_img(self.img, point, "A")
+            segmentations.draw_all_contours(
+                self.img,
+                {1: closest_segment1, 2: closest_segment2},
+                color=(255, 0, 255),
+                write_contour_number=True,
+            )
+
         return gap_length
 
-    @staticmethod
-    def get_min_y_coord(list_of_points):  #
-        return [p[1] for p in list_of_points]
-    
-    
     """----------------------------------------------------------------
     Methods for creating features related to the diameter of bones
     ----------------------------------------------------------------"""
-
 
     def get_distance_to_ratio_by(self):
         return self.get_consecutive_ldk_distances(self.landmarks, [0, 5, 6, 7, 8])
