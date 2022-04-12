@@ -46,12 +46,12 @@ FEATURES_FOR_DATA_ANALYSIS = [
     "id",
     "boneage",
     "gender",
-    #"max_purple_diameter",
+    "max_purple_diameter",
     "epifisis_max_diameter_ratio",
     "carp_bones_max_diameter_ratio",
     #"gap_ratio_17",
     "gap_ratio_5",
-    #"gap_ratio_13",
+    "gap_ratio_13",
     "gap_ratio_9",
     
     

@@ -441,6 +441,10 @@ class Hand(object):
         )
         return color_segments
 
+    """----------------------------------------------------------------
+    Miscellaneous
+    ----------------------------------------------------------------"""
+
     @staticmethod
     def get_distance(point1, point2):
         # point = tuple(int, int)
