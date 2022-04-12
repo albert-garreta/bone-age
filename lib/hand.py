@@ -160,18 +160,28 @@ class Hand(object):
         """
         landmark_num = google's mediapipe landmark where the gap between bones is measured
 
-        This function should return the distance between bones in the gap between bones that forms
-        across all joints in the fingers. For example, if `landmark_num=5`, then this function
+        This function should return the distance between two bones. The two bones are determined
+        by `landmark_num`. For example, if `landmark_num=5`, then this function
         should return the distance between the lower phalanx of the index finger, and the metacarpal
-        of the index finger (the reason why we focus on these bones in this example is because of the
-        landmark_num: see the `lanmarks_example.png`).
+        of the index finger (see the `lanmarks_example.png` to see where the landmark 5 is placed and
+        what "gap_distance" corresponds to such landmark).
 
-        If there are "bone formations" (i.e. small bones that appear as the person
-        grows and which are eventually merged into the "normal" bones) --these are contoured
-        in purple color in the images from `tagged_data_colored_contours`-- then these
-        are counted as part of the phalanx or metacarpal when it comes to computing the distance.
-
-        The way to compute this distance is not super easy: naively, we could just take the two
+        
+        ABOUT BONE FORMATIONS: 
+        
+        Sometimes phalanxes and metacarpals are accompanied of "bone formations" 
+        (these are small bones that appear as the person grows and which are eventually 
+        merged into the "normal" bones). For examples: the bone formations are contoured
+        in purple color in the images from `tagged_data_colored_contours`. 
+        
+        In case the phalanx and the metacarpal we are focusing on have bone formations, then 
+        when computing the distance between these bones, we include the bone formations as part
+        of the phalanx and metacarpal, respectively.
+        
+        
+        HOW TO FIND THIS FEATURE:
+        
+        The way to compute this feature is not super easy: naively, we could just take the two
         contours which are closer to `landmark_num`. However, in many cases this will detect
         a phalanx and its "bone fromation" (the distance between these two bones is much smaller
         than the actual distance we want to find). Hence, we need to refine this method a little.
