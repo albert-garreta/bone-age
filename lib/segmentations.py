@@ -161,31 +161,31 @@ def has_color(colored_img, contour, color):
     """
 
     color_bounds = BGR_color_bounds[color]
-    
-    # Next we get a list of pairs of pixels corresponding to the points in the contour
+
+    # Next we get a list of pairs of pixels called `segment_pixels` corresponding to the points in the contour
     # from the json file.
 
-    # See the remark about clipping in the function `get_segmentations`
-    #clipped_contour = [(np.clip(p[0], 0, colored_img.shape[0]), np.clip(p[1], 0, colored_img.shape[1])) for p in contour]
+    # Why we clip? See the remark about clipping in the function `get_segmentations`
+    # clipped_contour = [(np.clip(p[0], 0, colored_img.shape[0]), np.clip(p[1], 0, colored_img.shape[1])) for p in contour]
     clipped_contour = np.clip(np.array(contour), 0, list(colored_img.shape[:2]))
-    
+
     # !!! WARNING: the first component of an array is the y-axis component in the Euclidean plane
     segment_pixels = [colored_img[p[1], p[0], :] for p in clipped_contour]
-    return (
-        np.mean(
-            [
-                all(
-                    [
-                        pixel[channel] > color_bounds["lower"][channel]
-                        for channel in range(3)
-                    ]
-                    + [
-                        pixel[channel] < color_bounds["upper"][channel]
-                        for channel in range(3)
-                    ]
-                )
-                for pixel in segment_pixels
-            ]
+
+    # For each pixel, we check for each channel if the bounds specified in `color_bounds` hold. If more than
+    # 25% of the pixels met this requirement then we decide that the segment is of the color given by the
+    # variable `color`.
+    # NOTE: it is possible that two contours of different color intersect. For this reason we have to
+    # put a lower bound (here 25%) sufficiently large, otherwise we will potentially detect wrongly-colored
+    # contours that intersect correctly-colored contours. 
+
+    satisfaction_of_bounds_per_pixel = [
+        all(
+            [pixel[channel] > color_bounds["lower"][channel] for channel in range(3)]
+            + [pixel[channel] < color_bounds["upper"][channel] for channel in range(3)]
         )
-        > 0.25
-    )  # If we don't put a large enough lower bound, then this will detect off-color bones...# that slighlty touch on-color bounds
+        for pixel in segment_pixels
+    ]
+
+
+    return np.mean(satisfaction_of_bounds_per_pixel) > 0.25
