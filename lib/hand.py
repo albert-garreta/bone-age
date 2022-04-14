@@ -166,21 +166,21 @@ class Hand(object):
         of the index finger (see the `lanmarks_example.png` to see where the landmark 5 is placed and
         what "gap_distance" corresponds to such landmark).
 
-        
-        ABOUT BONE FORMATIONS: 
-        
-        Sometimes phalanxes and metacarpals are accompanied of "bone formations" 
-        (these are small bones that appear as the person grows and which are eventually 
+
+        ABOUT BONE FORMATIONS:
+
+        Sometimes phalanxes and metacarpals are accompanied of "bone formations"
+        (these are small bones that appear as the person grows and which are eventually
         merged into the "normal" bones). For examples: the bone formations are contoured
-        in purple color in the images from `tagged_data_colored_contours`. 
-        
-        In case the phalanx and the metacarpal we are focusing on have bone formations, then 
+        in purple color in the images from `tagged_data_colored_contours`.
+
+        In case the phalanx and the metacarpal we are focusing on have bone formations, then
         when computing the distance between these bones, we include the bone formations as part
         of the phalanx and metacarpal, respectively.
-        
-        
+
+
         HOW TO FIND THIS FEATURE:
-        
+
         The way to compute this feature is not super easy: naively, we could just take the two
         contours which are closer to `landmark_num`. However, in many cases this will detect
         a phalanx and its "bone fromation" (the distance between these two bones is much smaller
@@ -200,7 +200,7 @@ class Hand(object):
 
         """
         constraints = self.get_constraints_for_calculaiton_of_gaps(landmark_num)
-        return self._get_dist_to_point_of_centroid_closest_two_segments(
+        return self.get_distance_between_bones_close_to_landmark(
             self.landmarks[landmark_num], constraints
         )
 
@@ -264,46 +264,39 @@ class Hand(object):
         center_y = int(np.mean([p[1] for p in segment]))
         return (center_x, center_y)
 
-    def _get_dist_to_point_of_centroid_closest_two_segments(
-        self, point, constraints=None
-    ):
-        """See the documentation of `get_gap`"""
-        valid_segments = {}
-        if constraints is None:
-            valid_segments = self.segments
-        else:
-            for seg_id, segment in self.segments.items():
-                # WARNING: !!! fist compoment corresponds to the y-axis of an array
-                x_coords = [p[0] for p in segment]
-                if constraints[0] is not None and constraints[1] is not None:
-                    if (
-                        max(x_coords) < constraints[1][0]
-                        and min(x_coords) > constraints[0][0]
-                    ):
-                        valid_segments[seg_id] = segment
-                if constraints[0] is None and constraints[1] is not None:
-                    if max(x_coords) < constraints[1][0]:
-                        valid_segments[seg_id] = segment
-                if constraints[0] is not None and constraints[1] is None:
-                    if min(x_coords) > constraints[0][0]:
-                        valid_segments[seg_id] = segment
-        distances = [
-            (
-                segment_id,
-                euclidean_distance(point, self.get_segment_mean_point(segment)),
-            )
-            for segment_id, segment in valid_segments.items()
-        ]
-        distances.sort(key=lambda x: x[1])
-        closest_segment1 = self.segments[distances[0][0]]
-        closest_segment2 = self.segments[distances[1][0]]
+    #
+    #
+    #   Here we have methods for finding the gap in the gap variables.
+    #
+    #
 
+    def get_gap_between_bones_close_to_landmark(self, landmark, constraints=None):
+        """See the documentation of `get_gap`"""
+
+        # Here we restrict to contours (also called segments) that have no pixels
+        # above or below the two points given in `constraints`.
+        # The valid contours are stored in `valid_segments`
+
+        # `constraints[0]` is the point that marks the lower bound, while
+        # `constraints[1]` marks the upper bound.
+
+        valid_segments = self.get_valid_segments_for_gap_calculations(
+            landmark, constraints
+        )
+
+        # Now we get the two segments from valid_segments that are closer to the landmark
+        closest_segment1, closest_segment2 = self.get_two_closest_segments_to_point(
+            landmark, valid_segments
+        )
+
+        # Compute the distance between the two found segments
         gap_length = segmentations.get_distance_between_two_lists_of_points(
             closest_segment1, closest_segment2
         )
 
+        # This will draw the two selected segments
         if config.make_drawings:
-            annotate_img(self.img, point, "A")
+            annotate_img(self.img, landmark, "A")
             segmentations.draw_all_contours(
                 self.img,
                 {1: closest_segment1, 2: closest_segment2},
@@ -312,6 +305,54 @@ class Hand(object):
             )
 
         return gap_length
+
+    def get_valid_segments_for_gap_calculations(self, landmark, constraints):
+        # See the documentation for `get_gap_between_bones_close_to_landmark`
+        if constraints is None:
+            valid_segments = self.segments
+        else:
+            valid_segments = {}
+            for seg_id, segment in self.segments.items():
+                x_coords = [point[0] for point in segment]
+                if constraints[0] is not None and constraints[1] is not None:
+                    if (
+                        max(x_coords) < constraints[1][0]
+                        and min(x_coords) > constraints[0][0]
+                    ):
+                        valid_segments[seg_id] = segment
+                # NOTE: Currently the next two cases are never used.
+                if constraints[0] is None and constraints[1] is not None:
+                    if max(x_coords) < constraints[1][0]:
+                        valid_segments[seg_id] = segment
+                if constraints[0] is not None and constraints[1] is None:
+                    if min(x_coords) > constraints[0][0]:
+                        valid_segments[seg_id] = segment
+        return valid_segments
+
+    def get_two_closest_segments_to_point(self, point, segments):
+        """Find the closest two segments among `segments` to a
+        # given `point`.
+
+        Args:
+            point: (int, int)
+            segments: dictionary of the form {segment_id: segment}. A segment is a
+                    list of points
+
+        Returns:
+            (closest_segment1, closest_segment2)
+        """
+        #
+        ids_and_distances = [
+            (
+                segment_id,
+                euclidean_distance(point, self.get_segment_mean_point(segment)),
+            )
+            for segment_id, segment in segments.items()
+        ]
+        ids_and_distances.sort(key=lambda x: x[1])
+        closest_segment1 = segments[ids_and_distances[0][0]]
+        closest_segment2 = segments[ids_and_distances[1][0]]
+        return closest_segment1, closest_segment2
 
     """----------------------------------------------------------------
     Methods for creating features related to the diameter of bones
