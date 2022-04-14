@@ -200,7 +200,7 @@ class Hand(object):
 
         """
         constraints = self.get_constraints_for_calculaiton_of_gaps(landmark_num)
-        return self.get_distance_between_bones_close_to_landmark(
+        return self.get_gap_between_bones_close_to_landmark(
             self.landmarks[landmark_num], constraints
         )
 
