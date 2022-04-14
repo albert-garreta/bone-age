@@ -280,9 +280,7 @@ class Hand(object):
         # `constraints[0]` is the point that marks the lower bound, while
         # `constraints[1]` marks the upper bound.
 
-        valid_segments = self.get_valid_segments_for_gap_calculations(
-            landmark, constraints
-        )
+        valid_segments = self.get_valid_segments_for_gap_calculations(constraints)
 
         # Now we get the two segments from valid_segments that are closer to the landmark
         closest_segment1, closest_segment2 = self.get_two_closest_segments_to_point(
@@ -306,7 +304,7 @@ class Hand(object):
 
         return gap_length
 
-    def get_valid_segments_for_gap_calculations(self, landmark, constraints):
+    def get_valid_segments_for_gap_calculations(self, constraints):
         # See the documentation for `get_gap_between_bones_close_to_landmark`
         if constraints is None:
             valid_segments = self.segments
@@ -359,17 +357,108 @@ class Hand(object):
     ----------------------------------------------------------------"""
 
     def get_distance_to_ratio_by(self):
+        """
+        This creates a value by which we will divide all (non-gap-related) features
+        with a ratio in their name.
+
+        The distance is the sum of consecutive distances between the landmarks
+        0, 5, 6, 7, 8
+
+        Alternatively, we could try to customize one distance for each feature.
+        """
         return self.get_consecutive_ldk_distances(self.landmarks, [0, 5, 6, 7, 8])
 
+    def get_carp_bones_max_diameter(self):
+        self.carp_bones_max_diameter = self.get_color_bones_max_diameter("green")
+        return self.carp_bones_max_diameter
+
+    def get_max_purple_diameter(self):
+        self.max_purple_diameter = self.get_color_bones_max_diameter("purple")
+        return self.max_purple_diameter
+
+    def get_epifisis_max_diameter(self):
+        self.epifisis_max_diameter = self.get_color_bones_max_diameter("red")
+        return self.epifisis_max_diameter
+
+    def get_max_purple_diameter_ratio(self):
+        return self.max_purple_diameter / self.get_distance_to_ratio_by()
+
+    def get_carp_bones_max_diameter_ratio(self):
+        return self.carp_bones_max_diameter / self.get_distance_to_ratio_by()
+
+    def get_epifisis_max_diameter_ratio(self):
+        return self.epifisis_max_diameter / self.get_distance_to_ratio_by()
+
+    def get_color_bones_max_diameter(self, color):
+        """Gets the maximum diameter among the bones whose contour is colored in
+        the given color (in the file  `{HAND_ID}.png` from the folder `config.colored_data_dir`)
+        """
+
+        # If we haven't already, we get a dict with all color segments
+        if not hasattr(self, f"{color}_segments"):
+            setattr(
+                self,
+                f"{color}_segments",
+                self.detect_color_segments(self.segments, color),
+            )
+        segments_dict = getattr(self, f"{color}_segments")
+        if len(segments_dict) > 0:
+            # Next we compute the diameter of each segment and get the maximum among these
+            max_diameter = max(
+                [
+                    segmentations.get_diameter(segment)
+                    for segment in segments_dict.values()
+                ]
+            )
+        else:
+            # If no color segments were found, we assign this feature to be 0.
+            # NOTE: All hands irrespective of their age should have green segments (I'm almost sure), so for this color this case could be made to raise an Exception
+            # For red and purple segments it is natural for some hands to not
+            # have any red or purple segments, so in this case returning 0 is natural.
+            max_diameter = 0
+        return max_diameter
+
+    def detect_color_segments(self, segments, color):
+        """
+        Among the segments in `self.segments`, it finds those of the color specified
+        as colored in the corresponding hand file in the folder data_tagged
+        (yellow = phalanx and metaphalanx, green = wrist bones,
+        red = the two bones above the two arm bones,
+        purple = bones between phalanx and metaphalanxs)
+        """
+        color_segments = {}
+        colored_img = cv2.imread(
+            os.path.join(config.colored_data_dir, f"{self.id}.png")
+        )
+        for segment_id, segment in segments.items():
+            if segmentations.has_color(colored_img, segment, color):
+                color_segments[segment_id] = segment
+        self.img = segmentations.draw_all_contours(
+            self.img, color_segments, color=COLOR_NAME_TO_BGR[color]
+        )
+        return color_segments
+
+    #
+    #
+    #   The following features are currently not being used in `data_analysis.py`, the
+    #   reason being that they are difficult to compute by hand
+    #
+    #
+
     def get_carp_bones_max_distances(self):
+
         self.green_segments = self.detect_color_segments(self.segments, "green")
         green_seg_list = list(self.green_segments.values())
+
         if len(green_seg_list) > 0:
+            # Now we get a list of all pairs of distinct segments.
             green_seg_pair_list = [
                 (seg1, seg2)
                 for idx, seg1 in enumerate(green_seg_list)
-                for seg2 in green_seg_list[idx:]
+                for seg2 in green_seg_list[idx:]  # should be idx+1 no?
             ]
+
+            # Next we compute the distances between each pair of segments
             distances = []
             for segment_pair in green_seg_pair_list:
                 distances.append(
@@ -377,27 +466,13 @@ class Hand(object):
                         *segment_pair
                     )
                 )
+            # Finally, we find the greatest distance
             carp_bones_max_distances = max(distances)
         else:
+            # A similar note can be made here as when we were computing diameters
             carp_bones_max_distances = 0
         self.carp_bones_max_distances = carp_bones_max_distances
         return carp_bones_max_distances
-
-    def get_carp_bones_max_distances_ratio(self):
-        return self.carp_bones_max_distances / self.get_distance_to_ratio_by()
-
-    def get_carp_bones_max_diameter(self):
-        if len(self.green_segments) > 0:
-            carp_bones_max_diameter = max(
-                [
-                    segmentations.get_diameter(segment)
-                    for segment in self.green_segments.values()
-                ]
-            )
-        else:
-            carp_bones_max_diameter = 0
-        self.carp_bones_max_diameter = carp_bones_max_diameter
-        return carp_bones_max_diameter
 
     def get_carp_bones_sum_perimeters(self):
         if len(self.green_segments) > 0:
@@ -427,70 +502,14 @@ class Hand(object):
         self.yellow_sum_perimeters = yellow_sum_perimeters
         return yellow_sum_perimeters
 
+    def get_carp_bones_max_distances_ratio(self):
+        return self.carp_bones_max_distances / self.get_distance_to_ratio_by()
+
     def get_yellow_ratio_green(self):
         return self.carp_bones_sum_perimeters / self.yellow_sum_perimeters
 
     def get_carp_bones_sum_perimeters_ratio(self):
         return self.carp_bones_sum_perimeters / self.get_distance_to_ratio_by()
-
-    def get_max_purple_diameter(self):
-        self.purple_segments = self.detect_color_segments(self.segments, "purple")
-
-        if len(self.purple_segments) > 0:
-            max_purple_diameter = max(
-                [
-                    segmentations.get_diameter(segment)
-                    for segment in self.purple_segments.values()
-                ]
-            )
-        else:
-            max_purple_diameter = 0
-        self.max_purple_diameter = max_purple_diameter
-        return max_purple_diameter
-
-    def get_max_purple_diameter_ratio(self):
-        return self.max_purple_diameter / self.get_distance_to_ratio_by()
-
-    def get_carp_bones_max_diameter_ratio(self):
-        return self.carp_bones_max_diameter / self.get_distance_to_ratio_by()
-
-    def get_epifisis_max_diameter(self):
-        self.red_segments = self.detect_color_segments(self.segments, "red")
-
-        if len(self.red_segments) > 0:
-            epifisis_max_diameter = max(
-                [
-                    segmentations.get_diameter(segment)
-                    for segment in self.red_segments.values()
-                ]
-            )
-        else:
-            epifisis_max_diameter = 0
-        self.epifisis_max_diameter = epifisis_max_diameter
-        return epifisis_max_diameter
-
-    def get_epifisis_max_diameter_ratio(self):
-        return self.epifisis_max_diameter / self.get_distance_to_ratio_by()
-
-    def detect_color_segments(self, segments, color):
-        """
-        Among the segments in `self.segments`, it finds those of the color specified
-        as colored in the corresponding hand file in the folder data_tagged
-        (yellow = phalanx and metaphalanx, green = wrist bones,
-        red = the two bones above the two arm bones,
-        purple = bones between phalanx and metaphalanxs)
-        """
-        color_segments = {}
-        colored_img = cv2.imread(
-            os.path.join(config.colored_data_dir, f"{self.id}.png")
-        )
-        for segment_id, segment in segments.items():
-            if segmentations.has_color(colored_img, segment, color):
-                color_segments[segment_id] = segment
-        self.img = segmentations.draw_all_contours(
-            self.img, color_segments, color=COLOR_NAME_TO_BGR[color]
-        )
-        return color_segments
 
     """----------------------------------------------------------------
     Miscellaneous
